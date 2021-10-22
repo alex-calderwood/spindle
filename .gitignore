@@ -1,9 +1,10 @@
 *.html
 *.tw
-./game_twee/*
-./game_recompiled/*
-./game_html/*
-./twee/*
+game_twee/*
+game_recompiled/*
+game_html/*
+twee/*
+collection_cache/*
 
 
 # Byte-compiled / optimized / DLL files

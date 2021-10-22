@@ -23,7 +23,7 @@ def display_untweeability(dir):
 		path = os.path.join(dir, subdir)
 		if os.path.isdir(path):
 			html, filename = get_html_source(path)
-			can_be_untweed = is_untweeable(html)
+			can_be_untweed = can_be_untweed(html)
 			if can_be_untweed:
 				untweeable_paths.append(os.path.join(path, filename))
 			total += 1
@@ -32,6 +32,37 @@ def display_untweeability(dir):
 
 	print(f'{valid} of {total} untweeable ({valid/total*100 if total != 0 else 0}%)')
 	return untweeable_paths
+
+
+def get_links(passage):
+	"""
+	Given a twee passage, return the list of pages it links to.
+
+	[[A Linked Passage]] -> A Linked Passage
+	"""
+
+	links = re.findall(r'\[\[(.*)]]', passage)
+	links = [l.group(1) for l in links]
+	links = [(l.split('|')[-1] if '|' in l else l) for l in links]
+
+	choice_links = re.findall(r'<< ?choice ?\"(.*)\" ?>>', passage)
+	choice_links = [l.group(1) for l in choice_links]
+
+	return links + choice_links
+
+def init_twee(title, author):
+	text = make_header("StoryTitle", False)
+	text += title + '\n'
+	text += '\n'
+	text += make_header("StoryAuthor", False)
+	text += author + '\n'
+	return text
+
+
+def make_header(passage_name, with_num=True):
+	"""Make a valid page header from a name"""
+	num = f" {replaced_number_postfix}" if with_num else ''
+	return f':: {passage_name}{num}\n'
 
 
 def get_html_source(dir):
@@ -44,12 +75,11 @@ def get_html_source(dir):
 	return html, html_file
 
 
-def is_untweeable(html):
+def can_be_untweed(html):
 	"""
 	I'm not sure at the moment what constitutes untweeable HTML, but if we don't find DVIS in tiddlywiki,
 	that is a blocker
 	"""
-
 	# the same regex used in tiddlywiki
 	divs_re = re.compile(
 		r'<div id="storeArea"(.*)</html>',
@@ -63,10 +93,8 @@ def is_valid_twee(twee):
 	"""
 	Determine if a given .tw file is valid
 	"""
-
 	passages = split_passages(twee)
-	return \
-		all([is_valid_passage(p) for p in passages]) \
+	return all([is_valid_passage(p) for p in passages]) \
 		and contains_start(passages)
 
 
@@ -89,7 +117,8 @@ def contains_start(passages):
 
 
 def is_start(passage):
-	return False
+	# TODO
+	return 'Start' in split_lines(passage)[0]
 
 
 def clean_numbers(passage, repl='-'):
