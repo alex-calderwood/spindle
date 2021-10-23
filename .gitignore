@@ -5,7 +5,8 @@ game_recompiled/*
 game_html/*
 twee/*
 collection_cache/*
-
+*.pkl
+*csv
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
