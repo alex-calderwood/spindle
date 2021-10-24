@@ -1,14 +1,21 @@
 #!/usr/bin/env python
-
 import sys, os, re
 from cachetools import cached
 import subprocess
+import zipfile
+import shutil
+import random
 
 num_re = r'\[([0-9]+.?[0-9]*)\]'
 
 replaced_number_postfix = '[-]'
 image_postfix = '[Twine.image]'
 valid_postfixes = {replaced_number_postfix, image_postfix}
+
+formats = shutil.get_unpack_formats()
+valid_zip_extensions = []
+for f in formats:
+	valid_zip_extensions += f[1]
 
 
 def display_untweeability(dir):
@@ -21,14 +28,13 @@ def display_untweeability(dir):
 
 	for subdir in os.listdir(dir):
 		path = os.path.join(dir, subdir)
-		if os.path.isdir(path):
-			html, filename = get_html_source(path)
-			can_be_untweed = can_be_untweed(html)
-			if can_be_untweed:
-				untweeable_paths.append(os.path.join(path, filename))
-			total += 1
-			valid += 1 if can_be_untweed else 0
-			print(path, can_be_untweed)
+		html, filename = get_html_source(path)
+		can_be_untweed = is_untweeable(html)
+		if can_be_untweed:
+			untweeable_paths.append(filename)
+		total += 1
+		valid += 1 if can_be_untweed else 0
+		print(path, can_be_untweed)
 
 	print(f'{valid} of {total} untweeable ({valid/total*100 if total != 0 else 0}%)')
 	return untweeable_paths
@@ -65,17 +71,73 @@ def make_header(passage_name, with_num=True):
 	return f':: {passage_name}{num}\n'
 
 
+def unzip_all(dir, destination):
+	for file in os.listdir(dir):
+		path = os.path.join(dir, file)
+		dest = destination + file.split('.')[0]
+		print(path, dest)
+		try_unzip(path, dest)
+
+
+def try_unzip(file, destination):
+	if zipfile.is_zipfile(file):
+		path, name = os.path.split(file)
+		shutil.unpack_archive(file, destination)
+		return destination
+	return file
+
+
 def get_html_source(dir):
 	"""
 	Get the first html file from a directory and return its content
+	If dir is actually an HTML file, return that
+
+	* Important byproduct: if you call this multiple times, the previously returned files may be deleted by subsequent
+	calls. We expect you to move them or deal with them before calling this again *
 	"""
-	html_files = [f for f in os.listdir(dir) if f.endswith('.html')]
-	html_file = html_files[0] if html_files else None
-	html = open(os.path.join(dir, html_file)).read() if html_file else ''
-	return html, html_file
+	temp_dir = f'./temporary_game_files/{random.uniform(1000000, 2000000)}/'
+	if os.path.isdir(temp_dir):
+		shutil.rmtree(temp_dir)
+
+	try:
+		dir = try_unzip(dir, temp_dir)
+	except NotImplementedError as e:
+		if os.path.isdir(temp_dir):
+			shutil.rmtree(temp_dir)
+		return ''
+
+	if os.path.isdir(dir):
+		html_files = [f for f in os.listdir(dir) if f.endswith('.html')]
+		# TODO handle multiple HTML Files
+		html_file = html_files[0] if html_files else None
+		html_file = os.path.join(dir, html_file) if html_file else None
+		html = read_html(html_file)
+	elif os.path.exists(dir):
+		html_file = dir  # Assume the thing is an html file
+		try:
+			html = open(dir, 'r').read()
+		except Exception:
+			html = ''
+		if "</html>" not in html:
+			html_file = None
+			html = ''
+	else:
+		raise FileNotFoundError("Could not find " + dir)
+
+	if os.path.isdir(temp_dir):
+		shutil.rmtree(temp_dir)
+
+	# return html, html_file
+	return html
+
+def read_html(html_file):
+	try:
+		return str(open(html_file).read()) if html_file else ''
+	except UnicodeDecodeError as e:
+		return ''
 
 
-def can_be_untweed(html):
+def is_untweeable(html):
 	"""
 	I'm not sure at the moment what constitutes untweeable HTML, but if we don't find DVIS in tiddlywiki,
 	that is a blocker
@@ -189,7 +251,8 @@ def main(argv):
 	# twee = file.read()
 	# html = get_html_source(argv[0])
 	# display_untweeability(argv[0])
-	untwee_all(argv[0], argv[1])
+	# untwee_all(argv[0], argv[1])
+	pass
 
 
 def untwee_all(source_html_dir, write_twee_to):

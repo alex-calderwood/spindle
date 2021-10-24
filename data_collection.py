@@ -10,7 +10,6 @@ import matplotlib.pyplot as plt
 import time
 import pandas as pd
 from tenacity import retry, wait_fixed, stop_after_attempt
-import signal
 from tqdm import tqdm
 from selenium.webdriver.common.keys import Keys
 
@@ -19,10 +18,8 @@ from joblib import Memory
 cache_dir = 'collection_cache'
 memory = Memory(cache_dir, verbose=1)
 
-
-# chromedriver_path = '/usr/local/bin/chromedriver'
-
 url = "https://itch.io/games/downloadable/tag-twine"
+# https://ifdb.org/
 
 wd = None
 
@@ -70,6 +67,7 @@ def collect_itch_twine_links(url, wd):
 def scroll_down(wd):
 	wd.execute_script("window.scrollTo(0, document.body.scrollHeight);")
 
+
 def scroll_to_elt(wd, elt):
 	wd.execute_script("arguments[0].scrollIntoView(true);", elt)
 
@@ -79,9 +77,8 @@ def get_all_twine_games(links):
 	for l in tqdm(links):
 		row = get_twine_game(l)
 		df = df.append(row, ignore_index=True)
-		df.to_csv('scraping_results3.csv')
-		df.to_pickle('scraping_results3.pkl')
-
+		df.to_csv('full_scrape_results2.csv')
+		df.to_pickle('full_scrape_results2.pkl')
 
 
 # @memory.cache
@@ -145,6 +142,7 @@ def get_twine_game(game_url):
 	time.sleep(1)
 	return {'url': game_url, 'success': success, 'error': str(outer_err).replace(',', ' ').replace('\n', ' '), 'got_to': state}
 
+
 def do_purchase(game_url, wd):
 	state = 'go to purchase'
 	success = False
@@ -172,6 +170,7 @@ def do_purchase(game_url, wd):
 		pass
 
 	return success, state
+
 
 def thanks(wd):
 	wd.implicitly_wait(2)
@@ -232,10 +231,6 @@ def click_download(wd):
 	return elt, state
 
 
-def download_2(wd):
-	return WebDriverWait(wd, 10).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "a.buy_btn"))).click()
-
-
 def show_screenshot(elt):
 	screenshot = elt.screenshot_as_png
 	image = Image.open(BytesIO(screenshot))
@@ -245,10 +240,6 @@ def show_screenshot(elt):
 
 def find_element_by_text(text, wd, elt='div'):
 	return wd.find_element(By.XPATH, f'//{elt}[contains(text(),\'{text}\')]')
-
-	# elt = WebDriverWait(wd, 10).until(
-	# 	EC.element_to_be_clickable((By.XPATH, f'//{elt}[contains(text(),\'{text}\')]'))
-	# )
 
 
 def click_elt(wd, elt, s=10):
@@ -260,29 +251,12 @@ def click_elt(wd, elt, s=10):
 	elt.click()
 	return elt
 
-# def exit_gracefully(signum, frame):
-# 	# restore the original signal handler as otherwise evil things will happen
-# 	# in raw_input when CTRL+C is pressed, and our signal handler is not re-entrant
-# 	signal.signal(signal.SIGINT, original_sigint)
-# 	wd.close()
-# 	# restore the exit gracefully handler here
-# 	signal.signal(signal.SIGINT, exit_gracefully)
-
 if __name__ == '__main__':
 	chrome_options = webdriver.ChromeOptions()
 	wd = webdriver.Chrome('chromedriver', chrome_options=chrome_options)
-	# wd.implicitly_wait(10)
-	# chrome_options.add_argument('--headless')  # See wikipedia https://en.wikipedia.org/wiki/Headless_browser
-	# chrome_options.add_argument('--no-sandbox')
-	# chrome_options.add_argument('--disable-dev-shm-usage')
-
-	# original_sigint = signal.getsignal(signal.SIGINT)
-
-
-	# signal.signal(signal.SIGINT, exit_gracefully)
 
 	# links = collect_itch_twine_links(url, wd)
 	links = pd.read_pickle('data/itch_twine_links.pkl')
-	get_all_twine_games(list(links['link']))
+	get_all_twine_games(list(links['link'])[324:])
 
 	get_twine_game('https://grecat.itch.io/this-folder-is-haunted')
