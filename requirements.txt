@@ -1,1 +1,7 @@
 selenium
+pytest
+cachetools
+tqdm
+pandas
+matplotlib
+tenacity

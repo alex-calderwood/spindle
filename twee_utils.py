@@ -17,6 +17,10 @@ valid_zip_extensions = []
 for f in formats:
 	valid_zip_extensions += f[1]
 
+NL = '<|NL|>'
+BEGIN = '<|BG|>'
+END = '<|EF|>'
+
 
 def display_untweeability(dir):
 	"""
@@ -87,6 +91,17 @@ def try_unzip(file, destination):
 	return file
 
 
+def make_temp_file(contents):
+	path = f'./temporary_game_files/html_{random.uniform(1000000, 2000000)}'
+	with open(path, 'w') as file:
+		file.write(contents)
+	return path
+
+
+def delete_temp_file(filename):
+	os.remove(filename)
+
+
 def get_html_source(dir):
 	"""
 	Get the first html file from a directory and return its content
@@ -135,7 +150,6 @@ def read_html(html_file):
 		return str(open(html_file).read()) if html_file else ''
 	except UnicodeDecodeError as e:
 		return ''
-
 
 def is_untweeable(html):
 	"""
@@ -212,11 +226,17 @@ def clean_images(twee):
 	"""
 	Remove images from a .tw file.
 	"""
-	twee = re.sub(r'data:image/(.*)', '\n', twee)
+	twee = re.sub(r'data:image/(.*)\n', '\n', twee)
 	twee = re.sub(r'\[img\[(.*)\]\](.*)\n', '\n', twee)
 	twee = re.sub(r'(.*)\[Twine.image\]\n', '\n', twee)
 
 	return twee
+
+
+def prepare_for_generation(twee):
+	twee = BEGIN + twee.replace('\n', NL) + END + '\n'
+	return twee
+	
 
 
 def split_passages(twee):
@@ -270,7 +290,6 @@ def untwee(html_path):
 	process = subprocess.Popen(untwee_cmd.split(), stdout=subprocess.PIPE)
 	html, error = process.communicate()  # receive output from the python2 script
 	html = html.strip()
-	print(html, error)
 	return html, error
 
 
