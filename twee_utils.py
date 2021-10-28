@@ -5,6 +5,7 @@ import subprocess
 import zipfile
 import shutil
 import random
+import strbalance
 
 num_re = r'\[([0-9]+.?[0-9]*)\]'
 
@@ -17,9 +18,23 @@ valid_zip_extensions = []
 for f in formats:
 	valid_zip_extensions += f[1]
 
+# Set to true if you are training on a small model like GPT-2
+# A big model would be something like GPT-3
+SMALL = False
 NL = '<|NL|>'
 BEGIN = '<|BG|>'
 END = '<|EF|>'
+BEGIN = BEGIN if SMALL else '<|BEGIN|>'
+NL = NL if SMALL else '<NEWLINE>'
+NL = NL if SMALL else '<|END|>'
+
+balance_pairs = [
+	['<<', '>>'],
+	# ['<', '>'],
+	# ['[[', ']]'],
+	['[', ']'],
+]
+balancer = strbalance.Balance(pairs=balance_pairs, custom=True)
 
 
 def display_untweeability(dir):
@@ -145,11 +160,13 @@ def get_html_source(dir):
 	# return html, html_file
 	return html
 
+
 def read_html(html_file):
 	try:
 		return str(open(html_file).read()) if html_file else ''
 	except UnicodeDecodeError as e:
 		return ''
+
 
 def is_untweeable(html):
 	"""
@@ -167,25 +184,46 @@ def is_untweeable(html):
 
 def is_valid_twee(twee):
 	"""
+	Determine if a given twee script can compile
+	"""
+	return all(valid_twee_indicators(twee).values())
+
+
+def valid_twee_indicators(twee):
+	"""
 	Determine if a given .tw file is valid
 	"""
 	passages = split_passages(twee)
-	return all([is_valid_passage(p) for p in passages]) \
-		and contains_start(passages)
+	all_valid_passages = all([is_valid_passage(p) for p in passages])
+	start = contains_start(passages)
+	return {
+		'all_valid_passages': all_valid_passages,
+		'start': start,
+	}
+
+
+def valid_passage_indicators(passage):
+	passage = passage.strip()
+	lines = split_lines(passage)
+
+	valid_prefix = lines[0].startswith('::')
+	balanced = not balancer.is_unbalanced(passage)
+
+	# valid_name = bool(re.search(r'::(.*) \[?(.*)]?', lines[0]))
+	# valid_postfix = any(lines[0].endswith(post) for post in valid_postfixes)
+	return {
+		'valid_prefix': valid_prefix,
+		'balanced': balanced,
+		# 'valid_name': valid_name,
+		# 'valid_postfix': valid_postfix,
+	}
 
 
 def is_valid_passage(passage):
 	"""
 	Determine if a given passage can compile
 	"""
-	passage = passage.strip()
-	lines = split_lines(passage)
-
-	valid_prefix = lines[0].startswith('::')
-	valid_name = re.search(r'::(.*) \[?(.*)]?', lines[0])
-	valid_postfix = any(lines[0].endswith(post) for post in valid_postfixes)
-
-	return valid_prefix and valid_name and valid_postfix
+	return all(valid_passage_indicators(passage).values())
 
 
 def contains_start(passages):
@@ -210,7 +248,7 @@ def re_number(passages, repl='-'):
 	"""
 	Order passages - add passage numbers back to the de-numbered passages
 	"""
-	repl = '\[' + repl + '\]'
+	repl = '[' + repl + ']'
 	i = 1
 	new_passages = []
 	for p in passages:
@@ -229,14 +267,36 @@ def clean_images(twee):
 	twee = re.sub(r'data:image/(.*)\n', '\n', twee)
 	twee = re.sub(r'\[img\[(.*)\]\](.*)\n', '\n', twee)
 	twee = re.sub(r'(.*)\[Twine.image\]\n', '\n', twee)
+	twee = re.sub(r'\[>img\[(.*?)]]', '', twee)
 
 	return twee
 
 
-def prepare_for_generation(twee):
-	twee = BEGIN + twee.replace('\n', NL) + END + '\n'
+def remove_html(twee):
+	"""Remove remainiing HTML from the twee"""
+
+	twee = re.sub(r'<html>(.*)</html>', '', twee)
 	return twee
-	
+
+
+def remove_duplicate_newlines(twee):
+	return re.sub(r'\n+', '\n', twee)
+
+
+def twee_to_gen_format(twee):
+	"""
+	Change from twee text to the format we will be generationg
+	"""
+	gen = BEGIN + twee.replace('\n', NL) + END + '\n'
+	return gen
+
+
+def gen_to_twee_format(gen):
+	"""
+	Change from the generated format back to twee
+	"""
+	twee = gen.replace(NL, '\n').replace(END, '').replace(BEGIN, '')
+	return twee
 
 
 def split_passages(twee):
@@ -293,15 +353,40 @@ def untwee(html_path):
 	return html, error
 
 
-def clean_twee(argv):
-	file = open(argv[0])
-	twee = file.read()
+def clean_twee(twee):
 	twee = clean_images(twee)
 	passages = order([p for p in split_passages(twee)])
 	passages = [clean_numbers(p) for p in passages]
-	passages = re_number([p for p in passages])
+	passages = [remove_html(p) for p in passages if not is_empty_passage(p)]
 	twee = unsplit_passages(passages)
-	print(twee)
+	twee = remove_duplicate_newlines(twee)
+	return twee
+
+
+def is_empty_passage(passage):
+	passage = passage.strip()
+	return not(bool(passage)) or passage == '::untitled passage'
+
+
+def get_macros(twee, replace=None):
+	macros = re.findall(r'<<(.*?)>>', twee)
+	return macros
+
+
+def replace_macros(twee):
+	twee = re.sub(r'<<(.*?)>> ?', '', twee)
+	return twee
+
+
+# def clean_twee(argv):
+# 	file = open(argv[0])
+# 	twee = file.read()
+# 	twee = clean_images(twee)
+# 	passages = order([p for p in split_passages(twee)])
+# 	passages = [clean_numbers(p) for p in passages]
+# 	passages = re_number([p for p in passages])
+# 	twee = unsplit_passages(passages)
+# 	print(twee)
 
 
 if __name__ == '__main__':

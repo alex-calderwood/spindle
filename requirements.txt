@@ -5,3 +5,6 @@ tqdm
 pandas
 matplotlib
 tenacity
+pytest
+parameterized
+strbalance
