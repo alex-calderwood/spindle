@@ -59,7 +59,6 @@ class TestTweeParsing(unittest.TestCase):
             twee
         )
 
-
     @parameterized.expand([
         ["::title\n[>img[killer]]\nThings Happen", "::title\n\nThings Happen"],
         ["::title\n[>img[killer]]\nThings Happen[[Other|link]]", "::title\n\nThings Happen[[Other|link]]"],
@@ -81,4 +80,16 @@ class TestTweeParsing(unittest.TestCase):
         self.assertEqual(
             is_empty_passage(passage),
             empty
+        )
+
+    @parameterized.expand([
+        ["Things Happen[[Other|link]]", ['link']],
+        ["Things Happen[]", []],
+        ["Things Happen", []],
+        ["Things Happen [[with link]] [[another|link]]", ['with link', 'link']],
+    ])
+    def test_get_links(self, passage, link):
+        self.assertEqual(
+            get_links(passage),
+            link
         )

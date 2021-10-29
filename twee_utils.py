@@ -67,8 +67,8 @@ def get_links(passage):
 	[[A Linked Passage]] -> A Linked Passage
 	"""
 
-	links = re.findall(r'\[\[(.*)]]', passage)
-	links = [l.group(1) for l in links]
+	links = re.findall(r'\[\[(.*?)]]', passage)
+	links = [link for link in links]
 	links = [(l.split('|')[-1] if '|' in l else l) for l in links]
 
 	choice_links = re.findall(r'<< ?choice ?\"(.*)\" ?>>', passage)
@@ -78,23 +78,12 @@ def get_links(passage):
 
 
 def init_twee(title, author):
-	text = make_title("StoryTitle", False)
+	text = make_title("StoryTitle", False, line_end='\n')
 	text += title + '\n'
 	text += '\n'
-	text += make_title("StoryAuthor", False)
+	text += make_title("StoryAuthor", False, line_end='\n')
 	text += author + '\n'
 	return text
-
-
-def make_title(passage_name, with_num=True):
-	"""Make a valid page header from a name"""
-	num = f" {replaced_number_postfix}" if with_num else ''
-	return f':: {passage_name}{num}\n'
-
-
-def title_to_text(title):
-	match = re.search(r'::(.*) ?(\[(.*)])?', title)
-	return match.group(1) if match else ''
 
 
 def unzip_all(dir, destination):
@@ -290,6 +279,18 @@ def remove_duplicate_newlines(twee):
 	return re.sub(r'\n+', '\n', twee)
 
 
+def make_title(passage_name, with_num=True, process=True, line_end=''):
+	"""Make a valid page header from a name"""
+	passage_name = passage_name.lower() if process else passage_name
+	num = f" {replaced_number_postfix}" if with_num else ''
+	return f':: {passage_name}{num}{line_end}'
+
+
+def title_to_text(title):
+	match = re.search(r'::(.*) ?(\[(.*)])?', title)
+	return match.group(1) if match else ''
+
+
 def twee_to_gen_format(twee):
 	"""
 	Change from twee text to the format we will be generationg
@@ -298,18 +299,40 @@ def twee_to_gen_format(twee):
 	return gen
 
 
-# noinspection PyRedundantParentheses
+def make_prompt(title):
+	"""
+	input:
+		a twee title ie
+		:: titlename
+	output:
+		a twee title surounded by GPT-3 readable start/end tokens
+		<begin tokens>:: titlename<end tokens>
+	"""
+	return BEGIN + title + ENDPROMPT
+
+
+def make_completion(passage_without_title):
+	"""
+	input:
+		'a passage containing [[links|link]], etc'
+	ouput:
+		' a passage containing [[links|link]], etc<end tokens>'
+	"""
+	return " " + passage_without_title.replace('\n', NL).strip() + END
+
+
 def twee_to_gen_format_2(twee):
 	"""Prepare for GPT-3"""
 	passages = [p for p in split_lines(twee)]
-	prompt = passages[0]
-	completion = remove_duplicate_newlines(unsplit_passages(passages[1:]))
-	return (BEGIN + prompt + ENDPROMPT, " " + completion.replace('\n', NL).strip() + END)
+	title = passages[0]
+	rest_of_passage = remove_duplicate_newlines(unsplit_passages(passages[1:]))
+	return make_prompt(title), make_completion(rest_of_passage)
 
 
 def gen_to_twee_format_2(prompt='', response=''):
 	twee = prompt + response
-	return twee.replace(BEGIN, '').replace(ENDPROMPT, '').replace(END, '').replace(NL, '\n')
+	cleaned = twee.replace(BEGIN, '').replace(ENDPROMPT, '').replace(END, '').replace(NL, '\n')
+	return cleaned
 
 
 def gen_to_twee_format(gen):
