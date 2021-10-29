@@ -4,18 +4,22 @@ import sys, time
 from queue import Queue
 import subprocess
 import re
+import openai
+import os
 
-generator = None
+openai.api_key = os.getenv("OPENAI_KEY")
+
 spinning = ['\\', '|', '/', '-']
 
 verbose = False
 
+italic_start, italic_end = ('\x1B[3m', '\x1B[0m')
 
 def italic(text):
-    return f'\x1B[3m{text}\x1B[0m'
+    return f'{italic_start}{text}{italic_end}'
 
 
-def mock_generate(prompt):
+def mock_generate(link_name):
     time.sleep(1)
     result = {}
     result['completion'] = """\"You don't have to answer, I've seen it a million times." She pulls out a wallet and hands you a business card.<newline>DR. CHAE YEON-SEOK<newline>SPECIALIST<newline>[["Specialist?"|specialist]]<newline>[["..."|dotdotdot]]<|end|>"""
@@ -23,13 +27,23 @@ def mock_generate(prompt):
 
 
 def call_gpt_3(prompt):
-    raise NotImplementedError
-    result = {
-        'completion': ""
-    }
 
-    return result
+    response = openai.Completion.create(
+        model='curie:ft-user-wmco7qacght9seweh8jgp4ib-2021-10-28-04-55-18',
+        prompt=prompt,
+        temperature=0.7,
+        max_tokens=1000,
+        top_p=1,
+        frequency_penalty=0,
+        presence_penalty=0,
+        stop=utils.END,
+    )
 
+    return response['choices'][0]['text']
+
+
+# Decide which generator to use (GPT-3 or mock)
+get_completion = call_gpt_3
 
 
 def generate(title):
@@ -42,25 +56,10 @@ def generate(title):
         print(f'title {title}')
         print(f'prompt {prompt}')
 
-    # TODO make a spinning thing here
-    if not generator:
-        get_completion = mock_generate
-    else:
-        get_completion = call_gpt_3
-    #
-    # p = Process(target=mock_generate, args=(prompt, ))
-    # p.start()
-    # i = 0
-    # while result['completion'] is None:
-    #     sym = spinning[i % len(spinning)]
-    #     print(sym, end='\r')
-    #     time.sleep(.1)
-    #     i += 1
-    # p.join()
-    result = get_completion(prompt)
+    completion = get_completion(prompt)
 
     # Process the generated completion back into plain twee
-    twee_passage = title + '\n' + utils.gen_to_twee_format_2(result['completion'])
+    twee_passage = title + '\n' + utils.gen_to_twee_format_2(completion)
     return twee_passage
 
 
@@ -81,11 +80,11 @@ def get_written_passage(title):
     """
     Have the user write a passage.
     """
-    print(f':: {title}')
     passage = ''
     while True:
-        dummy = input() + '\n'
+        dummy = input(italic_start) + '\n'
         if dummy == '\n':
+            print(italic_end, end='')
             break
         passage += dummy
     return utils.make_title(title) + '\n' + passage
