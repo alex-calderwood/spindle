@@ -21,12 +21,13 @@ for f in formats:
 # Set to true if you are training on a small model like GPT-2
 # A big model would be something like GPT-3
 SMALL = False
-NL = '<|NL|>'
-BEGIN = '<|BG|>'
-END = '<|EF|>'
-BEGIN = BEGIN if SMALL else '<|BEGIN|>'
-NL = NL if SMALL else '<NEWLINE>'
-NL = NL if SMALL else '<|END|>'
+NL = '<|nl|>'
+BEGIN = '<|bg|>'
+END = '<|ef|>'
+BEGIN = BEGIN if SMALL else '<|begin|>'
+NL = NL if SMALL else '<newline>'
+END = END if SMALL else '<|end|>'
+ENDPROMPT = '<|start|>'
 
 balance_pairs = [
 	['<<', '>>'],
@@ -75,19 +76,25 @@ def get_links(passage):
 
 	return links + choice_links
 
+
 def init_twee(title, author):
-	text = make_header("StoryTitle", False)
+	text = make_title("StoryTitle", False)
 	text += title + '\n'
 	text += '\n'
-	text += make_header("StoryAuthor", False)
+	text += make_title("StoryAuthor", False)
 	text += author + '\n'
 	return text
 
 
-def make_header(passage_name, with_num=True):
+def make_title(passage_name, with_num=True):
 	"""Make a valid page header from a name"""
 	num = f" {replaced_number_postfix}" if with_num else ''
 	return f':: {passage_name}{num}\n'
+
+
+def title_to_text(title):
+	match = re.search(r'::(.*) ?(\[(.*)])?', title)
+	return match.group(1) if match else ''
 
 
 def unzip_all(dir, destination):
@@ -291,6 +298,20 @@ def twee_to_gen_format(twee):
 	return gen
 
 
+# noinspection PyRedundantParentheses
+def twee_to_gen_format_2(twee):
+	"""Prepare for GPT-3"""
+	passages = [p for p in split_lines(twee)]
+	prompt = passages[0]
+	completion = remove_duplicate_newlines(unsplit_passages(passages[1:]))
+	return (BEGIN + prompt + ENDPROMPT, " " + completion.replace('\n', NL).strip() + END)
+
+
+def gen_to_twee_format_2(prompt='', response=''):
+	twee = prompt + response
+	return twee.replace(BEGIN, '').replace(ENDPROMPT, '').replace(END, '').replace(NL, '\n')
+
+
 def gen_to_twee_format(gen):
 	"""
 	Change from the generated format back to twee
@@ -376,17 +397,6 @@ def get_macros(twee, replace=None):
 def replace_macros(twee):
 	twee = re.sub(r'<<(.*?)>> ?', '', twee)
 	return twee
-
-
-# def clean_twee(argv):
-# 	file = open(argv[0])
-# 	twee = file.read()
-# 	twee = clean_images(twee)
-# 	passages = order([p for p in split_passages(twee)])
-# 	passages = [clean_numbers(p) for p in passages]
-# 	passages = re_number([p for p in passages])
-# 	twee = unsplit_passages(passages)
-# 	print(twee)
 
 
 if __name__ == '__main__':
