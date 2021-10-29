@@ -87,6 +87,7 @@ class TestTweeParsing(unittest.TestCase):
         ["Things Happen[]", []],
         ["Things Happen", []],
         ["Things Happen [[with link]] [[another|link]]", ['with link', 'link']],
+        ["Things Happen [[first link]] [[second link]] [[another|first link]]", ['first link', 'second link']],
     ])
     def test_get_links(self, passage, link):
         self.assertEqual(

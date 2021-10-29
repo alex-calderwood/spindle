@@ -74,15 +74,25 @@ def get_links(passage):
 	choice_links = re.findall(r'<< ?choice ?\"(.*)\" ?>>', passage)
 	choice_links = [l.group(1) for l in choice_links]
 
-	return links + choice_links
+	return dedupe_in_order(links + choice_links)
+
+
+def dedupe_in_order(in_list, dont_add=set()):
+	dedupe = set() | dont_add
+	ordered_deduped = []
+	for l in in_list:
+		if l not in dedupe:
+			ordered_deduped.append(l)
+			dedupe.add(l)
+	return ordered_deduped
 
 
 def init_twee(title, author):
-	text = make_title("StoryTitle", False, line_end='\n')
+	text = make_title("StoryTitle", False, process=False, line_end='\n')
 	text += title + '\n'
 	text += '\n'
-	text += make_title("StoryAuthor", False, line_end='\n')
-	text += author + '\n'
+	text += make_title("StoryAuthor", False, process=False, line_end='\n')
+	text += author + '\n\n'
 	return text
 
 
@@ -392,9 +402,19 @@ def untwee_all(source_html_dir, write_twee_to):
 def untwee(html_path):
 	untwee_cmd = f"twee/untwee {html_path}"  # launch untwee (python2 script) using bash
 	process = subprocess.Popen(untwee_cmd.split(), stdout=subprocess.PIPE)
+	twee_text, error = process.communicate()  # receive output from the python2 script
+	return twee_text.strip(), error
+
+
+def twee(twee_path):
+	twee_cmd = f"twee/twee {twee_path}"  # launch untwee (python2 script) using bash
+	process = subprocess.Popen(twee_cmd.split(), stdout=subprocess.PIPE)
 	html, error = process.communicate()  # receive output from the python2 script
-	html = html.strip()
-	return html, error
+	return html.strip(), error
+
+
+def open(file):
+	subprocess.call(f"open {file}", stdout=subprocess.PIPE)
 
 
 def clean_twee(twee):
