@@ -15,6 +15,8 @@ verbose = False
 
 italic_start, italic_end = ('\x1B[3m', '\x1B[0m')
 
+MAX_GEN_COUNT = 10
+
 def italic(text):
     return f'{italic_start}{text}{italic_end}'
 
@@ -46,26 +48,27 @@ def call_gpt_3(prompt):
 get_completion = call_gpt_3
 
 
-def generate(title):
-    print('generating for title: ' + title)
+def generate(original_title):
+    print('generating for title: ' + original_title)
 
-    title = utils.make_title(title, with_num=False)
-    prompt = utils.make_prompt(title)
+    title_to_save = utils.make_title(original_title, with_num=False, process=False)   # readable by twee
+    processed_title = utils.make_title(original_title, with_num=False, process=True)  # ready for GPT-3
+    prompt = utils.make_prompt(processed_title)
 
     if verbose:
-        print(f'title {title}')
+        print(f'title {processed_title}')
         print(f'prompt {prompt}')
 
     completion = get_completion(prompt)
 
     # Process the generated completion back into plain twee
-    twee_passage = title + '\n' + utils.gen_to_twee_format_2(completion)
+    twee_passage = title_to_save + '\n' + utils.gen_to_twee_format_2(completion)
     return twee_passage
 
 
 def ask_do_gen(title):
     do_gen = 'starting'
-    while not do_gen or do_gen not in 'wgrv':
+    while not do_gen or do_gen not in 'wgvf':
         do_gen = input(
             f'(w) to write {italic(title)} yourself\n'
             f'(g) to generate {italic(title)}\n'
@@ -76,7 +79,7 @@ def ask_do_gen(title):
     return do_gen
 
 
-def get_written_passage(title):
+def human_writes(title):
     """
     Have the user write a passage.
     """
@@ -90,13 +93,33 @@ def get_written_passage(title):
     return utils.make_title(title) + '\n' + passage
 
 
+def retrospective(passage, passages, title, links_to_do, links_done):
+    """
+    TODO: Describe
+    """
+    if utils.is_valid_passage(passage):
+        passages.append(passage)
+        links_done.add(title)
+    else:
+        print('Invalid twee! Must try again.')
+        links_to_do.append(title)  # put it back
+
+    links = utils.get_links(passage)
+    were_was = 'were' if len(links) > 1 else 'was'
+    print(f"There {were_was} {len(links)} outgoing links in the completed passage{': ' + str(links) if links else ''}")
+    links_to_do += links
+    links_to_do = utils.dedupe_in_order(links_to_do, links_done)
+
+    return passages, links_to_do, links_done
+
+
 def interactive():
     title = None
     while not title:
         title = input('enter your story title: ')
 
     by = input('by: ')
-    by = by if by else 'alex'
+    by = by + ' and gpt-3' if by else 'alex and gpt-3'
 
     passages = []
     links_to_do = ['Start']
@@ -104,14 +127,15 @@ def interactive():
     while links_to_do:
         print(f'Passages to write: {links_to_do}')
         title = links_to_do.pop()
-        links_done.add(title)
         do_gen = ask_do_gen(title)
 
         if do_gen == 'g':
             passage = generate(title)
             print(f'completed passage: {italic(passage)} \n')
+            passages, links_to_do, links_done = retrospective(passage, passages, title, links_to_do, links_done)
         elif do_gen == 'w':
-            passage = get_written_passage(title)
+            passage = human_writes(title)
+            passages, links_to_do, links_done = retrospective(passage, passages, title, links_to_do, links_done)
         elif do_gen == 'v':
             if passages:
                 for p in passages:
@@ -119,32 +143,21 @@ def interactive():
             else:
                 print('No passages written yet.')
             links_to_do.append(title)
-            links_done.remove(title)
-            continue
-        else:
-            print('TODO')
-            links_to_do.append(title)
-            continue
-            # finish_all()
+        else:  # f
+            counter = 0
+            while links_to_do and counter < MAX_GEN_COUNT:
+                passage = generate(links_to_do.pop())
+                passages, links_to_do, links_done = retrospective(passage, passages, title, links_to_do, links_done)
+                counter += 1
+            if counter == MAX_GEN_COUNT:
+                print(f'generated max number of pages ({MAX_GEN_COUNT})')
 
-        if utils.is_valid_passage(passage):
-            passages.append(passage)
-        else:
-            print('Invalid twee! Must try again.')
-            links_to_do.append(title)  # put it back
-            links_done.remove(title)
-
-        links = utils.get_links(passage)
-        were_was = 'were' if len(links) > 1 else 'was'
-        print(f"There {were_was} {len(links)} outgoing links in the completed passage{': ' + str(links) if links else ''}")
-        links_to_do += links
-        links_to_do = utils.dedupe_in_order(links_to_do, links_done)
 
     print('Done!')
     print('making twee...', end='\r')
     twee = utils.init_twee(title, by)
     for passage in passages:
-        twee += passage + "\n"
+        twee += passage + "\n\n"
     twee = re.sub(r'::\s+start', ':: Start', twee)
 
     filename = 'my_story.tw'
