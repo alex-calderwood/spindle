@@ -78,6 +78,10 @@ def get_links(passage):
 
 
 def dedupe_in_order(in_list, dont_add=set()):
+	"""
+	Deduplicate the in_list, maintaining order
+	:param dont_add: an additional stoplist
+	"""
 	dedupe = set() | dont_add
 	ordered_deduped = []
 	for l in in_list:
@@ -163,7 +167,6 @@ def get_html_source(dir):
 	if os.path.isdir(temp_dir):
 		shutil.rmtree(temp_dir)
 
-	# return html, html_file
 	return html
 
 
@@ -413,8 +416,8 @@ def twee(twee_path):
 	return html.strip(), error
 
 
-def open(file):
-	subprocess.call(f"open {file}", stdout=subprocess.PIPE)
+def open_file(file):
+	subprocess.call(f"open {file}", shell=True, stdout=subprocess.PIPE)
 
 
 def clean_twee(twee):
