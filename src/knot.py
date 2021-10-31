@@ -1,6 +1,6 @@
 import os, sys, time, re
 import twee_utils as utils
-from src.display import make_selection
+from display import make_selection
 import openai
 
 openai.api_key = os.getenv("OPENAI_KEY")
@@ -14,7 +14,7 @@ bold_start, bold_end = ('\033[1m', '\033[0m')
 
 MAX_GEN_COUNT = 10
 
-data_dir = '..'
+data_dir = '../'
 
 ## Terminal Utilities ##
 def clear(msg=None):
@@ -165,7 +165,9 @@ def make_and_run_twee(story_title, by, passages):
         f.write(twee)
     print(f'Wrote twee to {filename}')
 
-    html_file = filename.split('.')[0] + '.html'
+    html_file = os.path.basename(filename).split('.')[0] + '.html'
+    html_file = os.path.join(data_dir, html_file)
+
     try:
         twee, error = utils.twee(filename)
         with open(html_file, 'wb') as f:

@@ -1,3 +1,5 @@
+src/.idea/*
+.idea/*
 *.html
 *.tw
 game_twee/*
