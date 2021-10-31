@@ -135,12 +135,15 @@ def retrospective(passage, passages, title, links_to_do, links_done):
     Post processing of a generated passage
         - Check the validity of the passage, append back to links to do if invalid
         - Extract the outgoing links from the passage and add to the links to do
+        - Process the links in each passage (GPT-3 is trained on lower case page titles)
     """
     if utils.is_valid_passage(passage):
+        passage = utils.lower_case_links(passage)
+        links = utils.get_links(passage)
+
         passages.append(passage)
         links_done.add(title)
 
-        links = utils.get_links(passage)
         were_was = 'were' if len(links) > 1 else 'was'
         print(
             f"There {were_was} {len(links)} outgoing links in the completed passage{': ' + str(links) if links else ''}")
@@ -150,7 +153,7 @@ def retrospective(passage, passages, title, links_to_do, links_done):
         print('Invalid twee! Must try again.')
         links_to_do.append(title)  # put it back
 
-    return passages, links_to_do, links_done
+    return passage, passages, links_to_do, links_done
 
 
 def make_and_run_twee(story_title, by, passages):
@@ -226,7 +229,7 @@ def interactive():
             counter = 0
             while links_to_do and counter < MAX_GEN_COUNT:
                 passage = generate(links_to_do.pop(0))
-                passages, links_to_do, links_done = retrospective(passage, passages, passage_title, links_to_do, links_done)
+                passage, passages, links_to_do, links_done = retrospective(passage, passages, passage_title, links_to_do, links_done)
                 counter += 1
             if counter == MAX_GEN_COUNT:
                 print(f'generated max number of pages ({MAX_GEN_COUNT})')
@@ -234,7 +237,7 @@ def interactive():
             continue
 
         # If we get to this point, we assume we've selected a passage
-        passages, links_to_do, links_done = retrospective(passage, passages, passage_title, links_to_do, links_done)
+        passage, passages, links_to_do, links_done = retrospective(passage, passages, passage_title, links_to_do, links_done)
 
     print('Done!')
     make_and_run_twee(story_title, by, passages)

@@ -1,6 +1,6 @@
 from parameterized import parameterized, parameterized_class # https://github.com/wolever/parameterized
 import unittest
-from twee_utils import *
+from ..twee_utils import *
 
 
 class TestValidTwee(unittest.TestCase):
@@ -94,3 +94,19 @@ class TestTweeParsing(unittest.TestCase):
             get_links(passage),
             link
         )
+
+    @parameterized.expand([
+        ["Things Happen[[Other|Link]]", "Things Happen[[Other|link]]"],
+        ["Things Happen[[lower|lower]]", "Things Happen[[lower|lower]]"],
+        ["[[UPPER]]", "[[upper]]"],
+        ["[[Mix|cAse]] a [[mix|case]] [[CASE]]", "[[Mix|case]] a [[mix|case]] [[case]]"],
+        ["[[bad|Format", "[[bad|Format"],
+        ["[[]]", "[[]]"],
+    ])
+    def test_lower_case_links(self, passage, lowered_link_passage):
+        self.assertEqual(
+            lower_case_links(passage),
+            lowered_link_passage
+        )
+
+

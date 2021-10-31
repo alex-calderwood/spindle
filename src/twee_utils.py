@@ -60,6 +60,21 @@ def display_untweeability(dir):
 	return untweeable_paths
 
 
+def lower_case_links(passage):
+	"""
+	The current model only supports lowercase links, so we need to process them here.
+	"""
+
+	def replacement(match):
+		text = match.group(1)
+		(text, link) = text.split('|') if '|' in text else ('', text)
+		link = link.lower()
+		text = text + '|' if text else ''
+		return f"[[{text}{link}]]"
+
+	return re.sub(r'\[\[(.*?)]]', replacement, passage)
+
+
 def get_links(passage):
 	"""
 	Given a twee passage, return the list of pages it links to.
