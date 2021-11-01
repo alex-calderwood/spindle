@@ -1,8 +1,9 @@
 import curses
 
-
 def _make_selection(stdscr, classes, message='(select one)'):
     """
+    This function was originally branched from https://stackoverflow.com/a/45577262/5009004
+
     :return: option, classes index
     :rtype: (str, int)
     """
