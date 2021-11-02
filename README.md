@@ -1,4 +1,6 @@
-# twine_generation
+# Spindle 
+
+![Spindle](spindle.jpg)
 
 Generating Twine with a Transformer
 
