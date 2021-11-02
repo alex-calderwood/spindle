@@ -1,6 +1,6 @@
 # Spindle 
 
-![Spindle](spindle.jpg)
+![Spindle](spindle.png)
 
 Generating Twine with a Transformer
 
