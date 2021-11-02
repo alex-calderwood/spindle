@@ -1,17 +1,15 @@
-# Spindle 
+# Spindle - Naive Twine Generation
 
 ![Spindle](spindle.png)
-
-Generating Twine with a Transformer
 
 # Setup
 
     pip install -r requirements.txt
 
-# Run interactive twine generation
+# Run interactive twine generation (requires first pretraining a GPT-3 instance)
 
     cd src
-    python knot.py
+    python src/spindle.py
 
 # Training
 
