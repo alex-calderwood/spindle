@@ -13,7 +13,7 @@ bold_start, bold_end = ('\033[1m', '\033[0m')
 
 MAX_GEN_COUNT = 16
 
-data_dir = '../'
+data_dir = './generated_games/'
 
 
 ## Terminal Utilities ##
@@ -26,6 +26,7 @@ def clear(msg=None):
 def italic(text):
     return f'{italic_start}{text}{italic_end}'
 
+
 def bold(text):
     return f'{bold_start}{text}{bold_end}'
 ## End Terminal Utilities ##
@@ -34,7 +35,7 @@ def bold(text):
 def generate(original_title):
     print('generating for title: ' + original_title)
 
-    title_to_save = utils.make_title(original_title, with_num=False, process=False)   # readable by twee
+    title_to_save = utils.make_title(original_title, with_num=False, process=False)  # readable by twee
     processed_title = utils.make_title(original_title, with_num=False, process=True)  # ready for GPT-3
     prompt = utils.make_prompt(processed_title)
 
@@ -60,6 +61,7 @@ def get_command(title):
             f'(W/g/f/v): '
         ).lower()
     return do_gen
+
 
 #
 # def ask_do_gen(title):
@@ -201,14 +203,17 @@ def interactive():
             while links_to_do and num_generated < MAX_GEN_COUNT:
                 passage_title = links_to_do.pop(0)
                 passage = generate(passage_title)
-                passage, passages, links_to_do, links_done = retrospective(passage, passages, passage_title, links_to_do, links_done)
+                passage, passages, links_to_do, links_done = retrospective(passage, passages, passage_title,
+                                                                           links_to_do, links_done)
                 num_generated += 1
             hit_max = f'(hit maximum of {MAX_GEN_COUNT})' if num_generated == MAX_GEN_COUNT else ''
             input(f"done generating {num_generated} passages {hit_max}")
             continue
 
         # If we get to this point, we assume we've selected a passage
-        passage, passages, links_to_do, links_done = retrospective(passage, passages, passage_title, links_to_do, links_done)
+        passage, passages, links_to_do, links_done = retrospective(
+            passage, passages, passage_title, links_to_do, links_done
+        )
 
     print('Done!')
     make_and_run_twee(story_title, by, passages)

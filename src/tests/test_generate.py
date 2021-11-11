@@ -1,6 +1,5 @@
 from parameterized import parameterized, parameterized_class  # https://github.com/wolever/parameterized
 import unittest
-from ..spindle import *
 
 
 class TestValidTwee(unittest.TestCase):
