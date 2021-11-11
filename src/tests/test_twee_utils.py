@@ -12,6 +12,7 @@ class TestValidTwee(unittest.TestCase):
         ["::lick\nsends jolts up your [[spine]].", (True, True)],  # Valid
         [":lick\nsends jolts up your [[spine]].", (False, True)],  # Only one :
         ["::lick\nsends jolts up your [[spine].", (True, False)],   # Only one ]
+        ["::lick\nsends jolts up your [[spine].", (True, False)],   # Only one ]
     ])
     def test_is_valid_passage(self, passage, is_valid):
         self.assertEqual(
@@ -107,6 +108,20 @@ class TestTweeParsing(unittest.TestCase):
         self.assertEqual(
             lower_case_links(passage),
             lowered_link_passage
+        )
+
+    @parameterized.expand([
+        ["good_link", None],
+        ["bad|link", "badlink"],
+        ["previous()", "previous"],
+        ["spi[ne", "spine"],
+        ["<spine,>", "spine"],
+        ["<weird html stuff>", "weird html stuff"],
+    ])
+    def test_validate_link_text(self, link_text, validated):
+        self.assertEqual(
+            validate_link_text(link_text),
+            validated
         )
 
 

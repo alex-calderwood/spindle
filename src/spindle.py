@@ -2,7 +2,7 @@ import os, re
 import twee_utils as utils
 from display import make_selection
 
-from src.external_model import get_completion
+from external_model import get_completion
 
 spinning = ['\\', '|', '/', '-']
 
@@ -108,6 +108,11 @@ def retrospective(passage, passages, title, links_to_do, links_done):
     if utils.is_valid_passage(passage):
         passage = utils.lower_case_links(passage)
         links = utils.get_links(passage)
+
+        for link in links:
+            validated_link = utils.validate_link_text(link)
+            if validated_link:
+                passage.replace(link, validated_link)
 
         passages.append(passage)
         links_done.add(title)

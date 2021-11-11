@@ -1,14 +1,14 @@
 import openai
 import os
 import time
+import twee_utils as utils
 
 openai.api_key = os.getenv("OPENAI_KEY")
-from src import twee_utils as utils
 
 
-def call_finetuned_completion_model(prompt):
+def _call_naive_model(prompt):
     """
-    Return a generated twee passge from a given title. The code is elsewhere modular to allow this to be re-implemented
+    Return a generated twee passage from a given title. The code is elsewhere modular to allow this to be re-implemented
     with any language model. Here, we call a fine-tuned GPT-3 instance trained to generate scaffolded Twee.
     """
 
@@ -37,4 +37,4 @@ def mock_generate(prompt):
 
 
 # Decide which generator to use (GPT-3 or mock)
-get_completion = call_finetuned_completion_model
+get_completion = _call_naive_model

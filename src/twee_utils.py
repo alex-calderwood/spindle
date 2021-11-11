@@ -35,6 +35,11 @@ balance_pairs = [
 	# ['[[', ']]'],
 	['[', ']'],
 ]
+
+# Characters that must not occur within a passage's outgoing links.
+# TODO the parenthesis make is such that previous() links are dissalowed, and this should be allowed in the future
+INVALID_LINK_CHARACTERS = '|[]()<>,.*/\\'
+
 balancer = strbalance.Balance(pairs=balance_pairs, custom=True)
 
 
@@ -75,6 +80,7 @@ def lower_case_links(passage):
 	return re.sub(r'\[\[(.*?)]]', replacement, passage)
 
 
+@cached(cache={})  # cache passages that have already been split to reduce compute time
 def get_links(passage):
 	"""
 	Given a twee passage, return the list of pages it links to.
@@ -232,12 +238,14 @@ def valid_passage_indicators(passage):
 
 	valid_prefix = lines[0].startswith('::')
 	balanced = not balancer.is_unbalanced(passage)
-
+	# links = get_links(passage)
+	# links_valid = all([is_valid_passage(passage) for l in links])
 	# valid_name = bool(re.search(r'::(.*) \[?(.*)]?', lines[0]))
 	# valid_postfix = any(lines[0].endswith(post) for post in valid_postfixes)
 	return {
 		'valid_prefix': valid_prefix,
 		'balanced': balanced,
+		# 'link_valid': link_valid,
 		# 'valid_name': valid_name,
 		# 'valid_postfix': valid_postfix,
 	}
@@ -294,6 +302,21 @@ def clean_images(twee):
 	twee = re.sub(r'\[>img\[(.*?)]]', '', twee)
 
 	return twee
+
+
+def validate_link_text(link):
+	"""
+	Return a validate link if the link is invalid.
+	If the link is valid, return None
+	"""
+	new_link = None
+	# Check if any of the characters are invalid
+	bad_chars = [c for c in link if c in INVALID_LINK_CHARACTERS]
+	if bad_chars:
+		new_link = link
+		for b in bad_chars:
+			new_link = new_link.replace(b, '')
+	return new_link
 
 
 def remove_html(twee):
