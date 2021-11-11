@@ -1,9 +1,8 @@
-import os, sys, time, re
+import os, re
 import twee_utils as utils
 from display import make_selection
-import openai
 
-openai.api_key = os.getenv("OPENAI_KEY")
+from src.external_model import get_completion
 
 spinning = ['\\', '|', '/', '-']
 
@@ -12,9 +11,10 @@ verbose = False
 italic_start, italic_end = ('\x1B[3m', '\x1B[0m')
 bold_start, bold_end = ('\033[1m', '\033[0m')
 
-MAX_GEN_COUNT = 10
+MAX_GEN_COUNT = 16
 
 data_dir = '../'
+
 
 ## Terminal Utilities ##
 def clear(msg=None):
@@ -29,38 +29,6 @@ def italic(text):
 def bold(text):
     return f'{bold_start}{text}{bold_end}'
 ## End Terminal Utilities ##
-
-
-def mock_generate(link_name):
-    time.sleep(1)
-    result = {}
-    result['completion'] = """\"You don't have to answer, I've seen it a million times." She pulls out a wallet and hands you a business card.<newline>DR. CHAE YEON-SEOK<newline>SPECIALIST<newline>[["Specialist?"|specialist]]<newline>[["..."|dotdotdot]]<|end|>"""
-    return result
-
-
-def call_finetuned_completion_model(prompt):
-    """
-    Make a call to our fine-tuned GPT-3 model trained to generate scaffolded Twee.
-    """
-
-    model = 'curie:ft-user-wmco7qacght9seweh8jgp4ib-2021-10-28-04-55-18'
-
-    response = openai.Completion.create(
-        model=model,
-        prompt=prompt,
-        temperature=0.7,
-        max_tokens=1000,
-        top_p=1,
-        frequency_penalty=0,
-        presence_penalty=0,
-        stop=utils.END,
-    )
-
-    return response['choices'][0]['text']
-
-
-# Decide which generator to use (GPT-3 or mock)
-get_completion = call_finetuned_completion_model
 
 
 def generate(original_title):
