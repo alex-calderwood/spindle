@@ -10,8 +10,7 @@ Generating Twine with a Transformer
 
 # Run interactive twine generation
 
-    cd src
-    python knot.py
+    python src/spindle.py
 
 # Training
 

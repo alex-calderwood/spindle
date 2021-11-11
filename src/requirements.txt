@@ -1,3 +1,4 @@
+stanza
 selenium
 pytest
 cachetools
