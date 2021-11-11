@@ -38,7 +38,7 @@ balance_pairs = [
 
 # Characters that must not occur within a passage's outgoing links.
 # TODO the parenthesis make is such that previous() links are dissalowed, and this should be allowed in the future
-INVALID_LINK_CHARACTERS = '|[]()<>,.*/\\'
+INVALID_LINK_CHARACTERS = '.|[]()<>,*/\\'
 
 balancer = strbalance.Balance(pairs=balance_pairs, custom=True)
 
@@ -276,6 +276,17 @@ def clean_numbers(passage, repl='-'):
 	return '\n'.join(lines)
 
 
+def clean_link_text(passage, links):
+	for link in links:
+		validated_link = validate_link_text(link)
+		if validated_link:
+			passage = passage.replace(link, validated_link)
+			links.remove(link)
+			links.append(validated_link)
+
+	return passage, links
+
+
 def re_number(passages, repl='-'):
 	"""
 	Order passages - add passage numbers back to the de-numbered passages
@@ -314,7 +325,7 @@ def validate_link_text(link):
 	bad_chars = [c for c in link if c in INVALID_LINK_CHARACTERS]
 	if bad_chars:
 		new_link = link
-		for b in bad_chars:
+		for b in set(bad_chars):
 			new_link = new_link.replace(b, '')
 	return new_link
 

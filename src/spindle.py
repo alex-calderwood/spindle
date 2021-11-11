@@ -49,7 +49,7 @@ def generate(original_title):
     return twee_passage
 
 
-def ask_do_gen(title):
+def get_command(title):
     do_gen = 'starting'
     while not do_gen or do_gen not in 'wgvf':
         do_gen = input(
@@ -79,7 +79,7 @@ def select_passage(passages_todo):
     """
     Call curses to have the user select a passage to write next
     """
-    message = 'To Do List (Remaining passages to write)'
+    message = 'To Do List - (Arrow Keys + Enter to Select)'
     selection, i = make_selection(passages_todo, message=message)
     return selection
 
@@ -108,11 +108,7 @@ def retrospective(passage, passages, title, links_to_do, links_done):
     if utils.is_valid_passage(passage):
         passage = utils.lower_case_links(passage)
         links = utils.get_links(passage)
-
-        for link in links:
-            validated_link = utils.validate_link_text(link)
-            if validated_link:
-                passage.replace(link, validated_link)
+        passage, links = utils.clean_link_text(passage, links)
 
         passages.append(passage)
         links_done.add(title)
@@ -174,22 +170,23 @@ def interactive():
     links_to_do = ['Start']
     links_done = set()
     while links_to_do:
-        print('todo', links_to_do)
+        print('To Do List:', links_to_do)
         if len(links_to_do) == 1:
             passage_title = links_to_do.pop()
         else:
             passage_title = select_passage(links_to_do)
             links_to_do.remove(passage_title)
 
-        do_gen = ask_do_gen(passage_title)
+        command = get_command(passage_title)
 
-        if do_gen == 'g':
+        if command == 'g':
             passage = generate(passage_title)
             print(f'completed passage: {italic(passage)} \n')
-        elif do_gen == 'w':
+        elif command == 'w':
             clear(f'{bold(passage_title)}\n')
             passage = human_writes(passage_title)
-        elif do_gen == 'v':
+
+        elif command == 'v':
             if passages:
                 for p in passages:
                     print(f'{p}\n')
@@ -199,14 +196,15 @@ def interactive():
             input('continue')
             continue
         else:  # f
-            counter = 0
-            while links_to_do and counter < MAX_GEN_COUNT:
-                passage = generate(links_to_do.pop(0))
+            num_generated = 0
+            links_to_do.append(passage_title)  # We've already popped one but we want to generate it too
+            while links_to_do and num_generated < MAX_GEN_COUNT:
+                passage_title = links_to_do.pop(0)
+                passage = generate(passage_title)
                 passage, passages, links_to_do, links_done = retrospective(passage, passages, passage_title, links_to_do, links_done)
-                counter += 1
-            if counter == MAX_GEN_COUNT:
-                print(f'generated max number of pages ({MAX_GEN_COUNT})')
-            input('continue')
+                num_generated += 1
+            hit_max = f'(hit maximum of {MAX_GEN_COUNT})' if num_generated == MAX_GEN_COUNT else ''
+            input(f"done generating {num_generated} passages {hit_max}")
             continue
 
         # If we get to this point, we assume we've selected a passage
