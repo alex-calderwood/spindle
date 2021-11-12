@@ -14,6 +14,9 @@ class ContextualTweeTree(NodeMixin):
         self._links = None
         self.context = context
 
+    def __str__(self):
+        return f'<ContextualTweeTree {self.name}>'
+
     def get_links(self):
         return self._links if self._links else get_links(self.passage)
 
@@ -66,8 +69,10 @@ class ContextualTweeTree(NodeMixin):
 
 
 if __name__ == '__main__':
-    with open('./generated_games/the_garden_2.tw') as f:
+    game = './game_downloads/yuuki.tw'
+    with open(game) as f:
         twee_str = f.read()
         tree = ContextualTweeTree.create(twee=twee_str)
-        dot = DotExporter(tree)
-        dot.to_picture("./tree.png")
+        # dot = DotExporter(tree, nodenamefunc=lambda n: f'{n.name} context {n.context}')
+        # dot.to_picture("./tree.png")
+        print(RenderTree(tree).by_attr('name'))

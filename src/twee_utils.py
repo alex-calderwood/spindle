@@ -285,7 +285,8 @@ def make_passage_dict(passages):
 
 def is_start(passage):
 	# TODO better
-	return 'Start' in split_lines(passage)[0]
+	# print(passage)
+	return '::start' == re.sub(r'\s+', '', split_lines(passage)[0].strip().lower())
 
 
 def clean_numbers(passage, repl='-'):
