@@ -27,6 +27,23 @@ class TestValidTwee(unittest.TestCase):
         )
 
 
+class TestIsStartIntegration(unittest.TestCase):
+
+    @parameterized.expand([
+        ["::lick", False],
+        ["::start", True],
+        ["::Start", True],
+        [":: Start", True],
+        [":: Start [-]", False],  # I think these two should be false
+        [":: Start [4]", False],
+    ])
+    def test_is_start_and_get_title_integration(self, passage, actual):
+        self.assertEqual(
+            is_start(passage),
+            actual
+        )
+
+
 class TestTweeParsing(unittest.TestCase):
 
     @parameterized.expand([

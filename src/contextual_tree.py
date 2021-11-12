@@ -69,7 +69,7 @@ class ContextualTweeTree(NodeMixin):
 
 
 if __name__ == '__main__':
-    game = './game_downloads/yuuki.tw'
+    game = './generated_games/my_story.tw'
     with open(game) as f:
         twee_str = f.read()
         tree = ContextualTweeTree.create(twee=twee_str)

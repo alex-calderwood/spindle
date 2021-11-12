@@ -1,9 +1,8 @@
 import os, re
 import twee_utils as utils
-from display import make_selection
+from display import make_selection, clear, italic, bold, italic_start, italic_end
 
 from external_model import get_completion
-from src.display import clear, italic, bold, italic_start, italic_end
 
 spinning = ['\\', '|', '/', '-']
 
@@ -214,9 +213,6 @@ def done(passages, links_to_do, links_done):
         passage = "What a lazy writer. Didn\'t even get to this yet."
         retrospective(passage, passages, passage_title,links_to_do, links_done)
     return passages, links_to_do, links_done
-
-
-
 
 
 def display_passages(passages):

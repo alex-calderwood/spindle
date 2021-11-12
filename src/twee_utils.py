@@ -274,19 +274,51 @@ def make_passage_dict(passages):
 	Create a dictionary mapping title to passage
 	:rtype a dict: key: title_text, value: full_passage
 	"""
-	d = {}
-	for passage in passages:
-		title_text = title_to_text(get_title(split_lines(passage)))
-		# print('title', title_text, 'passage', passage, )
-		d[title_text] = passage
-	return d
+	return {title_to_text(get_title(split_lines(passage))): passage for passage in passages}
 
+
+def make_title(passage_name, with_num=True, process=True, line_end=''):
+	"""Make a valid page header from a name"""
+	passage_name = passage_name.lower() if process else passage_name
+	num = f" {replaced_number_postfix}" if with_num else ''
+	return f':: {passage_name}{num}{line_end}'
+
+
+@cached(cache={})  # cache passages that have already been split to reducce compute time
+def split_lines(passage):
+	return passage.split('\n')
+
+
+def get_title(lines):
+	return lines[0].strip()
+
+
+def title_to_text(title):
+	match = re.search(r'::(.*) ?(\[(.*)])?', title)
+	return match.group(1) if match else ''
+
+
+# def _title_text_without_tag(title):
+# 	"""
+# 	start[3] -> start
+# 	just a util for checking whether something is the start
+# 	"""
+#
+
+
+def twee_to_gen_format(twee):
+	"""
+	Change from twee text to the format we will be generationg
+	"""
+	gen = BEGIN + twee.replace('\n', NL) + END + '\n'
+	return gen
 
 
 def is_start(passage):
 	# TODO better
-	# print(passage)
-	return '::start' == re.sub(r'\s+', '', split_lines(passage)[0].strip().lower())
+	title = title_to_text(get_title(split_lines(passage)))
+	print(str(re.sub(r'\s+', '', title.lower())))
+	return 'start' == str(re.sub(r'\s+', '', title.lower()))
 
 
 def clean_numbers(passage, repl='-'):
@@ -363,26 +395,6 @@ def remove_duplicate_newlines(twee):
 	return re.sub(r'\n+', '\n', twee)
 
 
-def make_title(passage_name, with_num=True, process=True, line_end=''):
-	"""Make a valid page header from a name"""
-	passage_name = passage_name.lower() if process else passage_name
-	num = f" {replaced_number_postfix}" if with_num else ''
-	return f':: {passage_name}{num}{line_end}'
-
-
-def title_to_text(title):
-	match = re.search(r'::(.*) ?(\[(.*)])?', title)
-	return match.group(1) if match else ''
-
-
-def twee_to_gen_format(twee):
-	"""
-	Change from twee text to the format we will be generationg
-	"""
-	gen = BEGIN + twee.replace('\n', NL) + END + '\n'
-	return gen
-
-
 def make_prompt(title):
 	"""
 	input:
@@ -436,17 +448,6 @@ def split_passages(twee):
 
 def unsplit_passages(passages):
 	return '\n\n'.join(passages)
-
-
-
-
-@cached(cache={})  # cache passages that have already been split to reducce compute time
-def split_lines(passage):
-	return passage.split('\n')
-
-
-def get_title(lines):
-	return lines[0].strip()
 
 
 def page_number(passage):
