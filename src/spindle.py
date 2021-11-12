@@ -181,34 +181,27 @@ def interactive():
 
         command = get_command(passage_title)
 
+        # Single title commands
         if command == 'g':
             passage = generate(passage_title)
             print(f'completed passage: {italic(passage)} \n')
         elif command == 'w':
             clear(f'{bold(passage_title)}\n')
             passage = human_writes(passage_title)
-
+        # Commands not utilizing the popped title
         elif command == 'v':
-            if passages:
-                for p in passages:
-                    print(f'{p}\n')
-            else:
-                print('No passages written yet.')
+            display_passages(passages)
             links_to_do.append(passage_title)  # put it back
             input('continue')
             continue
-        else:  # f
-            num_generated = 0
-            links_to_do.append(passage_title)  # We've already popped one but we want to generate it too
-            while links_to_do and num_generated < MAX_GEN_COUNT:
-                passage_title = links_to_do.pop(0)
-                passage = generate(passage_title)
-                passage, passages, links_to_do, links_done = retrospective(passage, passages, passage_title,
-                                                                           links_to_do, links_done)
-                num_generated += 1
-            hit_max = f'(hit maximum of {MAX_GEN_COUNT})' if num_generated == MAX_GEN_COUNT else ''
-            input(f"done generating {num_generated} passages {hit_max}")
+        elif command == 'f':
+            passages, links_to_do, links_done = generate_all(passages, passage_title, links_to_do, links_done)
             continue
+        elif command == 'q':
+            passages, links_to_do, links_done = done(passages, links_to_do, links_done)
+            continue
+        else:
+            raise NotImplemented(f"No command {command}. How did you get here?")
 
         # If we get to this point, we assume we've selected a passage
         passage, passages, links_to_do, links_done = retrospective(
@@ -217,6 +210,39 @@ def interactive():
 
     print('Done!')
     make_and_run_twee(story_title, by, passages)
+
+
+def generate_all(passages, passage_title, links_to_do, links_done):
+    num_generated = 0
+    links_to_do.append(passage_title)  # We've already popped one but we want to generate it too
+    while links_to_do and num_generated < MAX_GEN_COUNT:
+        passage_title = links_to_do.pop(0)
+        passage = generate(passage_title)
+        _, passages, links_to_do, links_done = retrospective(
+            passage, passages, passage_title, links_to_do, links_done
+        )
+        num_generated += 1
+    hit_max = f'(hit maximum of {MAX_GEN_COUNT})' if num_generated == MAX_GEN_COUNT else ''
+    input(f"done generating {num_generated} passages {hit_max}")
+    return passages, links_to_do, links_done
+
+
+def done(passages, links_to_do, links_done):
+    for passage_title in links_to_do:
+        passage = "What a lazy writer. Didn\'t even get to this yet."
+        retrospective(passage, passages, passage_title,links_to_do, links_done)
+    return passages, links_to_do, links_done
+
+
+
+
+
+def display_passages(passages):
+    if passages:
+        for p in passages:
+            print(f'{p}\n')
+    else:
+        print('No passages written yet.')
 
 
 if __name__ == '__main__':
