@@ -3,33 +3,15 @@ import twee_utils as utils
 from display import make_selection
 
 from external_model import get_completion
+from src.display import clear, italic, bold, italic_start, italic_end
 
 spinning = ['\\', '|', '/', '-']
 
 verbose = False
 
-italic_start, italic_end = ('\x1B[3m', '\x1B[0m')
-bold_start, bold_end = ('\033[1m', '\033[0m')
-
 MAX_GEN_COUNT = 16
 
 data_dir = './generated_games/'
-
-
-## Terminal Utilities ##
-def clear(msg=None):
-    os.system('cls' if os.name == 'nt' else 'clear')
-    if msg:
-        print(msg)
-
-
-def italic(text):
-    return f'{italic_start}{text}{italic_end}'
-
-
-def bold(text):
-    return f'{bold_start}{text}{bold_end}'
-## End Terminal Utilities ##
 
 
 def generate(original_title):
