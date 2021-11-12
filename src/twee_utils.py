@@ -262,8 +262,29 @@ def contains_start(passages):
 	return any([is_start(p) for p in passages])
 
 
+def get_start(passages):
+	for passage in passages:
+		if is_start(passage):
+			return passage
+	return None
+
+
+def make_passage_dict(passages):
+	"""
+	Create a dictionary mapping title to passage
+	:rtype a dict: key: title_text, value: full_passage
+	"""
+	d = {}
+	for passage in passages:
+		title_text = title_to_text(get_title(split_lines(passage)))
+		# print('title', title_text, 'passage', passage, )
+		d[title_text] = passage
+	return d
+
+
+
 def is_start(passage):
-	# TODO
+	# TODO better
 	return 'Start' in split_lines(passage)[0]
 
 
@@ -416,9 +437,15 @@ def unsplit_passages(passages):
 	return '\n\n'.join(passages)
 
 
+
+
 @cached(cache={})  # cache passages that have already been split to reducce compute time
 def split_lines(passage):
 	return passage.split('\n')
+
+
+def get_title(lines):
+	return lines[0].strip()
 
 
 def page_number(passage):
@@ -492,6 +519,7 @@ def get_macros(twee, replace=None):
 def replace_macros(twee):
 	twee = re.sub(r'<<(.*?)>> ?', '', twee)
 	return twee
+
 
 
 if __name__ == '__main__':

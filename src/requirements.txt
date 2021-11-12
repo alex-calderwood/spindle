@@ -1,4 +1,5 @@
 stanza
+anytree
 selenium
 pytest
 cachetools
