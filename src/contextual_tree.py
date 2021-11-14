@@ -37,8 +37,7 @@ class ContextualTweeTree(NodeMixin):
         if bool(twee) == bool(passages):
             raise SyntaxError("should call with either twee or passages defined")
         if twee:
-            passages = split_passages(twee)
-        print([p for p in passages])
+            passages = [p for p in split_passages(twee)]
         start = get_start(passages)
         if not start:
             raise RuntimeError("No Start node found")
@@ -65,7 +64,7 @@ class ContextualTweeTree(NodeMixin):
             passage = passage_dict.get(link)
             if passage:
                 # create the child and add it to the parent
-                _ = ContextualTweeTree(passage, title=link, context=childs_context, parent=node)
+                _ = ContextualTweeTree(passage, title=make_title(link), context=childs_context, parent=node)
             else:
                 print(f"passage {link} does not exist")
 
@@ -75,6 +74,7 @@ if __name__ == '__main__':
     print(f'game {game}')
     with open(game) as f:
         twee_str = f.read()
+        print(f'tree for {game}:')
         tree = ContextualTweeTree.create(twee=twee_str)
         # dot = DotExporter(tree, nodenamefunc=lambda n: f'{n.name} context {n.context}')
         # dot.to_picture("./tree.png")

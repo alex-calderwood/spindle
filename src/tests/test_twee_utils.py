@@ -54,6 +54,7 @@ class TestTitleToText(unittest.TestCase):
         [":: Start [4]", "Start"],
         [":: more than one word [4]", "more than one word"],
         [":: more than one word ", "more than one word"],
+        [":: another", "another"]
     ])
     def test_title_to_text(self, passage, actual):
         self.assertEqual(

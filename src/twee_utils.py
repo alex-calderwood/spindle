@@ -316,13 +316,6 @@ def passage_to_text(passage):
 
 	return new_passage
 
-# def _title_text_without_tag(title):
-# 	"""
-# 	start[3] -> start
-# 	just a util for checking whether something is the start
-# 	"""
-#
-
 
 def twee_to_gen_format(twee):
 	"""
@@ -333,9 +326,8 @@ def twee_to_gen_format(twee):
 
 
 def is_start(passage):
-	# TODO better
+	# TODO do this better
 	title = title_to_text(get_title(split_lines(passage)))
-	print(str(re.sub(r'\s+', ' ', title.lower())))
 	return 'start' == str(re.sub(r'\s+', ' ', title.lower()))
 
 
@@ -539,7 +531,6 @@ def get_macros(twee, replace=None):
 def replace_macros(twee):
 	twee = re.sub(r'<<(.*?)>> ?', '', twee)
 	return twee
-
 
 
 if __name__ == '__main__':
