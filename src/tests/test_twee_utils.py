@@ -113,6 +113,7 @@ class TestTweeParsing(unittest.TestCase):
         )
 
     @parameterized.expand([
+        ["No links here", "No links here"],
         ["Walk towards the [[forest|forest_link]]", "Walk towards the forest"],
         ["Walk towards the [[forest]]", "Walk towards the forest"],
         ["Take a [[left|left_link]].", "Take a left."],
@@ -120,6 +121,8 @@ class TestTweeParsing(unittest.TestCase):
         ["Take a [[left]] and [[go]]", "Take a left and go"],
         ["Take a [[left|mixed]] and [[go]]", "Take a left and go"],
         ["Take a left <<choice \"thing\">>and [[go]]", "Take a left and go"],
+        ["Take a left <<choice \"thing\">> and go", "Take a left and go"], # duplicate spaces
+        ["testing  ", "testing "], # duplicate spaces
     ])
     def test_get_links(self, passage, link):
         self.assertEqual(

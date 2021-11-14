@@ -308,6 +308,9 @@ def passage_to_text(passage):
 	new_passage, _ = re.subn(r'\[\[([^\|]*?)\|(.*?)]]', r'\1', new_passage)
 	new_passage, _ = re.subn(r'<< ?choice ?\"(.*)\" ?>> ?', '', new_passage)
 
+	# Remove residual duplicate spaces
+	new_passage, _ = re.subn(r"(\s)\1+", r"\1", new_passage)
+
 	return new_passage
 
 # def _title_text_without_tag(title):
