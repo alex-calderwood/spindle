@@ -28,7 +28,6 @@ class TestValidTwee(unittest.TestCase):
 
 
 class TestIsStartIntegration(unittest.TestCase):
-
     @parameterized.expand([
         ["::lick", False],
         ["::start", True],
@@ -110,6 +109,21 @@ class TestTweeParsing(unittest.TestCase):
     def test_get_links(self, passage, link):
         self.assertEqual(
             get_links(passage),
+            link
+        )
+
+    @parameterized.expand([
+        ["Walk towards the [[forest|forest_link]]", "Walk towards the forest"],
+        ["Walk towards the [[forest]]", "Walk towards the forest"],
+        ["Take a [[left|left_link]].", "Take a left."],
+        ["Take a [[left|left_link]] and [[go|go_right]]", "Take a left and go"],
+        ["Take a [[left]] and [[go]]", "Take a left and go"],
+        ["Take a [[left|mixed]] and [[go]]", "Take a left and go"],
+        ["Take a left <<choice \"thing\">>and [[go]]", "Take a left and go"],
+    ])
+    def test_get_links(self, passage, link):
+        self.assertEqual(
+            passage_to_text(passage),
             link
         )
 

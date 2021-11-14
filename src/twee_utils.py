@@ -298,6 +298,18 @@ def title_to_text(title):
 	return match.group(1) if match else ''
 
 
+def passage_to_text(passage):
+	"""
+	Similar to get_links,
+	TODO reuse some code between the two
+	"""
+	# Can't figure out way to do this in one line, but I think its possible, and would be faster
+	new_passage, subs = re.subn(r'\[\[([^\|]*?)]]', r'\1', passage)
+	new_passage, _ = re.subn(r'\[\[([^\|]*?)\|(.*?)]]', r'\1', new_passage)
+	new_passage, _ = re.subn(r'<< ?choice ?\"(.*)\" ?>> ?', '', new_passage)
+
+	return new_passage
+
 # def _title_text_without_tag(title):
 # 	"""
 # 	start[3] -> start

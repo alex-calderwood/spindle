@@ -9,7 +9,7 @@ class ContextualTweeTree(NodeMixin):
     def __init__(self, passage, context=[], title=None, parent=None):
         self.passage = passage
         self.lines = split_lines(passage)
-        self.name = self.title = title if title else get_title(self.lines)
+        self.name = self.title = (title if title else get_title(self.lines))
         self.parent = parent
         self._links = None
         self.context = context
