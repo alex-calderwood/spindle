@@ -11,10 +11,11 @@ class ContextualTweeTree(NodeMixin):
         self.passage = passage
         self.passage_text = passage_to_text(passage)
         self.title = title if title else get_title(self.lines)
-        self.name = title_to_text(self.title)
+        # the context is all relevant story details along the path from the root to the current node
+        self.context = context
+        self.name = title_to_text(self.title)  # + " context: " + str(context)
         self.parent = parent
         self._links = None
-        self.context = context
 
     def __str__(self):
         return f'<ContextualTweeTree {self.name}>'
@@ -22,8 +23,11 @@ class ContextualTweeTree(NodeMixin):
     def get_links(self):
         return self._links if self._links else get_links(self.passage)
 
-    def extract_events(self):
-        return self.name
+    def extract_story(self):
+        """
+        Run the NLP pipeline to extract from the current passage, all interesting story items.
+        """
+        return {'name': self.name}
 
     @staticmethod
     def create(twee=None, passages=None):
@@ -56,26 +60,29 @@ class ContextualTweeTree(NodeMixin):
         Helper method for tree creation.
         Add children to a twee tree by recursively iterating over the links in each twee passage,
         keeping track of the context you've seen before.
-        In retrospect I should have hand-coded this. I thought bringing in an external tree library would save time. It didn't,
-        but now we have some useful functions from anytree so I'm leaving the dependency.
+        :param node: the current root node to expand
+        :param context: the context (including the parent)
+        :param passage_dict: a mapping from link (title text) to passage
         """
         for link in node.get_links():
-            childs_context = context + [node.extract_events()]
+            childs_context = context + [node.extract_story()]
             passage = passage_dict.get(link)
             if passage:
                 # create the child and add it to the parent
-                _ = ContextualTweeTree(passage, title=make_title(link), context=childs_context, parent=node)
+                child_node = ContextualTweeTree(passage, title=make_title(link), context=childs_context, parent=node)
+                ContextualTweeTree._traverse_and_create_context(child_node, childs_context, passage_dict)
             else:
                 print(f"passage {link} does not exist")
 
 
 if __name__ == '__main__':
-    game = './generated_games/my_story.tw'
+    game = './generated_games/the_garden_2.tw'
     print(f'game {game}')
     with open(game) as f:
         twee_str = f.read()
         print(f'tree for {game}:')
         tree = ContextualTweeTree.create(twee=twee_str)
         # dot = DotExporter(tree, nodenamefunc=lambda n: f'{n.name} context {n.context}')
-        # dot.to_picture("./tree.png")
+        dot = DotExporter(tree, nodenamefunc=lambda n: f'{n.name}')
+        dot.to_picture("./tree.png")
         print(RenderTree(tree).by_attr('name'))
