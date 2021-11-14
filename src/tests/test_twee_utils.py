@@ -33,8 +33,9 @@ class TestIsStartIntegration(unittest.TestCase):
         ["::start", True],
         ["::Start", True],
         [":: Start", True],
-        [":: Start [-]", False],  # I think these two should be false
-        [":: Start [4]", False],
+        [":: Start [-]", True],
+        [":: Start [4]", True],
+        [":: Started to lick [4]", False],
     ])
     def test_is_start_and_get_title_integration(self, passage, actual):
         self.assertEqual(
@@ -42,6 +43,23 @@ class TestIsStartIntegration(unittest.TestCase):
             actual
         )
 
+
+class TestTitleToText(unittest.TestCase):
+    @parameterized.expand([
+        ["::lick", "lick"],
+        ["::start", "start"],
+        ["::Start", "Start"],
+        [":: Start", "Start"],
+        [":: Start [-]", "Start"],
+        [":: Start [4]", "Start"],
+        [":: more than one word [4]", "more than one word"],
+        [":: more than one word ", "more than one word"],
+    ])
+    def test_title_to_text(self, passage, actual):
+        self.assertEqual(
+            title_to_text(passage),
+            actual
+        )
 
 class TestTweeParsing(unittest.TestCase):
 
@@ -121,8 +139,8 @@ class TestTweeParsing(unittest.TestCase):
         ["Take a [[left]] and [[go]]", "Take a left and go"],
         ["Take a [[left|mixed]] and [[go]]", "Take a left and go"],
         ["Take a left <<choice \"thing\">>and [[go]]", "Take a left and go"],
-        ["Take a left <<choice \"thing\">> and go", "Take a left and go"], # duplicate spaces
-        ["testing  ", "testing "], # duplicate spaces
+        ["Take a left <<choice \"thing\">> and go", "Take a left and go"],  # duplicate spaces
+        ["\n\ntesting  ", "\ntesting "],  # duplicate spaces
     ])
     def test_get_links(self, passage, link):
         self.assertEqual(

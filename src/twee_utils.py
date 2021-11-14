@@ -294,8 +294,11 @@ def get_title(lines):
 
 
 def title_to_text(title):
-	match = re.search(r'::(.*) ?(\[(.*)])?', title)
-	return match.group(1) if match else ''
+	match = re.search(r'::(.*?) ?\[(.*)]', title)
+	if match:
+		return match.group(1).strip()
+	match = re.search(r'::(.+)', title)
+	return match.group(1).strip() if match else ''
 
 
 def passage_to_text(passage):
@@ -332,8 +335,8 @@ def twee_to_gen_format(twee):
 def is_start(passage):
 	# TODO better
 	title = title_to_text(get_title(split_lines(passage)))
-	print(str(re.sub(r'\s+', '', title.lower())))
-	return 'start' == str(re.sub(r'\s+', '', title.lower()))
+	print(str(re.sub(r'\s+', ' ', title.lower())))
+	return 'start' == str(re.sub(r'\s+', ' ', title.lower()))
 
 
 def clean_numbers(passage, repl='-'):

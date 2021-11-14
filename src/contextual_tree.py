@@ -7,9 +7,11 @@ from twee_utils import *
 class ContextualTweeTree(NodeMixin):
     # AnyTree Docs: https://anytree.readthedocs.io/en/2.8.0/
     def __init__(self, passage, context=[], title=None, parent=None):
-        self.passage = passage
         self.lines = split_lines(passage)
-        self.name = self.title = (title if title else get_title(self.lines))
+        self.passage = passage
+        self.passage_text = passage_to_text(passage)
+        self.title = title if title else get_title(self.lines)
+        self.name = title_to_text(self.title)
         self.parent = parent
         self._links = None
         self.context = context
@@ -36,10 +38,10 @@ class ContextualTweeTree(NodeMixin):
             raise SyntaxError("should call with either twee or passages defined")
         if twee:
             passages = split_passages(twee)
-
+        print([p for p in passages])
         start = get_start(passages)
         if not start:
-            raise RuntimeError("No Start node found found found")
+            raise RuntimeError("No Start node found")
 
         # Make a dictionary mapping title_text: full_passage
         passage_dict = make_passage_dict(passages)
@@ -70,6 +72,7 @@ class ContextualTweeTree(NodeMixin):
 
 if __name__ == '__main__':
     game = './generated_games/my_story.tw'
+    print(f'game {game}')
     with open(game) as f:
         twee_str = f.read()
         tree = ContextualTweeTree.create(twee=twee_str)
