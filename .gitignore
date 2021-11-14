@@ -1,3 +1,9 @@
+.DS_Store
+temporary_game_files/*
+training_data/*
+game_downloads/*
+en_core_web_lg-2.3.1.tar.gz
+neuralcoref/*
 src/.idea/*
 .idea/*
 *.html
