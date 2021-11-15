@@ -20,10 +20,22 @@ class ContextualTweeTree(NodeMixin):
     def __str__(self):
         return f'<ContextualTweeTree {self.name}>'
 
+    def render(self):
+        print(RenderTree(self).by_attr('name'))
+
+    def render_root(self):
+        node = self
+        parent = node.parent
+        while parent is not None:
+            temp = parent
+            parent = node.parent
+            node = temp
+        print(node.render())
+
     def get_links(self):
         return self._links if self._links else get_links(self.passage)
 
-    def extract_story(self):
+    def extract_narrative_elements(self):
         """
         Run the NLP pipeline to extract from the current passage, all interesting story items.
         """
@@ -65,7 +77,7 @@ class ContextualTweeTree(NodeMixin):
         :param passage_dict: a mapping from link (title text) to passage
         """
         for link in node.get_links():
-            childs_context = context + [node.extract_story()]
+            childs_context = context + [node.extract_narrative_elements()]
             passage = passage_dict.get(link)
             if passage:
                 # create the child and add it to the parent
@@ -85,4 +97,4 @@ if __name__ == '__main__':
         # dot = DotExporter(tree, nodenamefunc=lambda n: f'{n.name} context {n.context}')
         dot = DotExporter(tree, nodenamefunc=lambda n: f'{n.name}')
         dot.to_picture("./tree.png")
-        print(RenderTree(tree).by_attr('name'))
+        tree.render()

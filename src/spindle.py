@@ -1,8 +1,8 @@
 import os, re
 import twee_utils as utils
 from display import make_selection, clear, italic, bold, italic_start, italic_end
-
 from external_model import get_completion
+from contextual_tree import ContextualTweeTree
 
 spinning = ['\\', '|', '/', '-']
 
@@ -33,13 +33,14 @@ def generate(original_title):
 
 def get_command(title):
     do_gen = 'starting'
-    while not do_gen or do_gen not in 'wgvf':
+    while not do_gen or do_gen not in 'wgvfq':
         do_gen = input(
             f'(w) to write {italic(title)} yourself\n'
             f'(g) to generate {italic(title)}\n'
             f'(v) to view the written passages.\n'
-            f'(f) to finish all remaining passages.\n'
-            f'(W/g/f/v): '
+            f'(f) to generate all remaining passages.\n'
+            f'(q) to terminate writing with unwritten passages.\n'
+            f'(W/g/f/v/q): '
         ).lower()
     return do_gen
 
@@ -81,13 +82,16 @@ def human_writes(title):
     return utils.make_title(title) + '\n' + passage
 
 
-def retrospective(passage, passages, title, links_to_do, links_done):
+def retrospective(passage, passages, title, links_to_do, links_done, link_to_parent):
     """
     Post processing of a generated passage
         - Check the validity of the passage, append back to links to do if invalid
         - Extract the outgoing links from the passage and add to the links to do
         - Process the links in each passage (GPT-3 is trained on lower case page titles)
+
+    :param link_to_parent: a dict mapping link to parent node
     """
+
     if utils.is_valid_passage(passage):
         passage = utils.lower_case_links(passage)
         links = utils.get_links(passage)
@@ -98,14 +102,28 @@ def retrospective(passage, passages, title, links_to_do, links_done):
 
         were_was = 'were' if len(links) > 1 else 'was'
         print(
-            f"There {were_was} {len(links)} outgoing links in the completed passage{': ' + str(links) if links else ''}")
+            f"There {were_was} {len(links)} outgoing links in the completed passage{': ' + str(links) if links else ''}"
+        )
         links_to_do += links
         links_to_do = utils.dedupe_in_order(links_to_do, links_done)
+
+        parent = link_to_parent[title]
+        context = (parent.context + [parent.extract_narrative_elements()]) if parent else []
+        node = ContextualTweeTree(
+            passage,
+            title=utils.make_title(title),
+            parent=parent,
+            context=context
+        )
+        for link in links:
+            link_to_parent[link] = node
+
+        node.render_root()
     else:
         print('Invalid twee! Must try again.')
         links_to_do.append(title)  # put it back
 
-    return passage, passages, links_to_do, links_done
+    return passage, passages, links_to_do, links_done, link_to_parent
 
 
 def make_and_run_twee(story_title, by, passages):
@@ -150,8 +168,10 @@ def interactive():
     by = by + _and if by else 'alex' + _and
 
     passages = []
-    links_to_do = ['Start']
+    start = 'Start'
+    links_to_do = [start]
     links_done = set()
+    link_to_parent = {start: None}
     while links_to_do:
         print('To Do List:', links_to_do)
         if len(links_to_do) == 1:
@@ -176,43 +196,46 @@ def interactive():
             input('continue')
             continue
         elif command == 'f':
-            passages, links_to_do, links_done = generate_all(passages, passage_title, links_to_do, links_done)
+            passages, links_to_do, links_done, link_to_parent = generate_all(passages, passage_title, links_to_do, links_done, link_to_parent)
             continue
         elif command == 'q':
-            passages, links_to_do, links_done = done(passages, links_to_do, links_done)
+            passages, links_to_do, links_done, link_to_parent = done(passages, passage_title, links_to_do, links_done, link_to_parent)
             continue
         else:
             raise NotImplemented(f"No command {command}. How did you get here?")
 
         # If we get to this point, we assume we've selected a passage
-        passage, passages, links_to_do, links_done = retrospective(
-            passage, passages, passage_title, links_to_do, links_done
+        passage, passages, links_to_do, links_done, link_to_parent = retrospective(
+            passage, passages, passage_title, links_to_do, links_done, link_to_parent
         )
 
     print('Done!')
     make_and_run_twee(story_title, by, passages)
 
 
-def generate_all(passages, passage_title, links_to_do, links_done):
+def generate_all(passages, passage_title, links_to_do, links_done, link_to_parent):
     num_generated = 0
     links_to_do.append(passage_title)  # We've already popped one but we want to generate it too
     while links_to_do and num_generated < MAX_GEN_COUNT:
         passage_title = links_to_do.pop(0)
         passage = generate(passage_title)
-        _, passages, links_to_do, links_done = retrospective(
-            passage, passages, passage_title, links_to_do, links_done
+        _, passages, links_to_do, links_done, link_to_parent = retrospective(
+            passage, passages, passage_title, links_to_do, links_done, link_to_parent
         )
         num_generated += 1
     hit_max = f'(hit maximum of {MAX_GEN_COUNT})' if num_generated == MAX_GEN_COUNT else ''
     input(f"done generating {num_generated} passages {hit_max}")
-    return passages, links_to_do, links_done
+    return passages, links_to_do, links_done, link_to_parent
 
 
-def done(passages, links_to_do, links_done):
-    for passage_title in links_to_do:
-        passage = "What a lazy writer. Didn\'t even get to this yet."
-        retrospective(passage, passages, passage_title,links_to_do, links_done)
-    return passages, links_to_do, links_done
+def done(passages, passage_title, links_to_do, links_done, link_to_parent):
+    links_to_do.append(passage_title)  # We've already popped one but we want to generate it too
+    while links_to_do:
+        passage_title = links_to_do.pop(0)
+        passage = utils.make_title(passage_title) + "\nWhat a lazy writer. Didn\'t even get to this yet."
+        print("done", passage)
+        passage, passages, links_to_do, links_done, link_to_parent = retrospective(passage, passages, passage_title, links_to_do, links_done, link_to_parent)
+    return passages, links_to_do, links_done, link_to_parent
 
 
 def display_passages(passages):
