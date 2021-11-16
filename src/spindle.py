@@ -108,12 +108,10 @@ def retrospective(passage, passages, title, links_to_do, links_done, link_to_par
         links_to_do = utils.dedupe_in_order(links_to_do, links_done)
 
         parent = link_to_parent[title]
-        context = (parent.context + [parent.extract_narrative_elements()]) if parent else []
         node = ContextualTweeTree(
             passage,
             title=utils.make_title(title),
             parent=parent,
-            context=context
         )
         for link in links:
             link_to_parent[link] = node

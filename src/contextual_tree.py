@@ -6,15 +6,15 @@ from twee_utils import *
 
 class ContextualTweeTree(NodeMixin):
     # AnyTree Docs: https://anytree.readthedocs.io/en/2.8.0/
-    def __init__(self, passage, context=[], title=None, parent=None):
+    def __init__(self, passage, title=None, parent=None):
         self.lines = split_lines(passage)
         self.passage = passage
         self.passage_text = passage_to_text(passage)
         self.title = title if title else get_title(self.lines)
         # the context is all relevant story details along the path from the root to the current node
-        self.context = context
-        self.name = title_to_text(self.title)  # + " context: " + str(context)
         self.parent = parent
+        self.context = (parent.context + [parent.extract_narrative_elements()]) if parent else []
+        self.name = title_to_text(self.title) + " context: " + str(self.context)
         self._links = None
 
     def __str__(self):
@@ -63,11 +63,11 @@ class ContextualTweeTree(NodeMixin):
 
         # Create a contextual tree
         root = ContextualTweeTree(start)
-        ContextualTweeTree._traverse_and_create_context(root, [], passage_dict)
+        ContextualTweeTree._traverse_and_create_context(root, passage_dict)
         return root
 
     @staticmethod
-    def _traverse_and_create_context(node, context, passage_dict):
+    def _traverse_and_create_context(node, passage_dict):
         """
         Helper method for tree creation.
         Add children to a twee tree by recursively iterating over the links in each twee passage,
@@ -77,12 +77,11 @@ class ContextualTweeTree(NodeMixin):
         :param passage_dict: a mapping from link (title text) to passage
         """
         for link in node.get_links():
-            childs_context = context + [node.extract_narrative_elements()]
             passage = passage_dict.get(link)
             if passage:
                 # create the child and add it to the parent
-                child_node = ContextualTweeTree(passage, title=make_title(link), context=childs_context, parent=node)
-                ContextualTweeTree._traverse_and_create_context(child_node, childs_context, passage_dict)
+                child_node = ContextualTweeTree(passage, title=make_title(link), parent=node)
+                ContextualTweeTree._traverse_and_create_context(child_node, passage_dict)
             else:
                 print(f"passage {link} does not exist")
 

@@ -4,6 +4,7 @@ A bell chimes in the house.
 "Oh, wow. Is it that late? We should be headed to bed if you wanna be up early enough to dig your car out."
 "Yeah, I should probably turn in."
 "The night's still young. Why don't we stay up a little longer?"
+Donald Trump shows up. You realize you've been in simulated White House this whole time.
 """,
     "Alex softens. Josephine picks up an apple."
     ]
@@ -53,6 +54,20 @@ def test_bert_huggingface_ner():
     print(example)
     ner_results = nlp(example)
     print(ner_results)
+
+    same_ent = lambda x, y: x.split('-')[-1] == y.split('-')[-1]
+    entities = []
+    for i, entity in enumerate(ner_results):
+        prev_entity = ner_results[i - 1] if i > 0 else {}
+        if (entity['index'] == prev_entity.get('index', -2) + 1) \
+                and same_ent(entity['entity'], prev_entity.get('entity', 'nope')):
+            print(entity, prev_entity)
+            prev_entity['word'] = prev_entity.get('word', '') + ' ' + entity['word']
+        else:
+            entities.append(entity)
+    entities = [{'type': e['entity'], 'name': e['word']} for e in entities]
+    print(entities)
+
 
 
 test_bert_huggingface_ner()
