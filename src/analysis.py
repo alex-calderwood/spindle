@@ -1,12 +1,13 @@
 from transformers import AutoTokenizer, AutoModelForTokenClassification
 from transformers import pipeline
-import os
 from collections import defaultdict
-import threading, time, sys, itertools, random
+import threading, time, sys, itertools, random, os
 import spacy
 from twee_utils import dedupe_in_order
+import numpy as np
 
 PRONOUN_STOP_LIST = {'what', 'there', 'anything', 'nothing', 'it', 'something'}
+
 
 def load_nlp_modules():
     def _animate(text, finished='Loaded model.'):
@@ -21,6 +22,7 @@ def load_nlp_modules():
             sys.stdout.flush()
             time.sleep(random.uniform(0.02, 0.2))
         sys.stdout.write(f'\r{finished}                                         \r')
+
     text = 'Loading English... Reticulating Splines... etc...'
     done = False
     t = threading.Thread(target=_animate, args=(text,))
@@ -41,18 +43,31 @@ ner_pipeline, nlp = load_nlp_modules()
 def ner(text):
     """
     Extract Named Entities from a text, return a dictionary.
+
+    :rtype dict: eg
+        {
+        "B-PER": ["Anna", "Alex"]
+        }
     """
     ner_results = ner_pipeline(text)
-    is_same_ent = lambda x, y: x.split('-')[-1] == y.split('-')[-1]
+    # Not checking that the internal entity type in each word part matches, but should...
+    # same_ent_type = lambda x, y: x.split('-')[-1] == y.split('-')[-1]
     entities = []
+    prev_beg = {}
     for i, entity in enumerate(ner_results):
-        prev_entity = ner_results[i - 1] if i > 0 else {}
-        if (entity['index'] == prev_entity.get('index', -2) + 1) \
-                and is_same_ent(entity['entity'], prev_entity.get('entity', 'nope')):
-            # print(entity, prev_entity)
-            prev_entity['word'] = prev_entity.get('word', '') + ' ' + entity['word']
+        # print(entity['word'], entity['entity'])
+        if entity['entity'].startswith('B'):
+            prev_beg = entity
+            entities.append(prev_beg)
+        elif entity['entity'].startswith('I'):
+            if entity['word'].startswith('##'):
+                word = entity['word'][2:]
+            else:
+                word = ' ' + entity['word']
+            prev_beg['word'] += word
         else:
-            entities.append(entity)
+            raise Exception("How?")
+
     processed_entities = defaultdict(list)
     for e in entities:
         e_type = e['entity']
@@ -91,43 +106,44 @@ def comma_sep(list_of):
         return ', '.join(list_of[:-1]) + ', and ' + list_of[-1]
 
 
-def entity_context_compoenent(entities):
-    return character_context_component(entities)
-    # TODO others
+def entity_context_component(entities):
+    characters = list(np.array([v for k, v in entities.items() if k.endswith('PER')]).flatten())
+    locations = list(np.array([v for k, v in entities.items() if k.endswith('LOC')]).flatten())
+
+    return character_context_component(characters) + " " + \
+        loc_context_component(locations)
 
 
-def character_context_component(enttites):
-    # characters = [v for k, v in enttites.items() if k.endswith('PER')][0]
-    # return f"Previously mentioned characters: {comma_sep(characters) if characters else 'None'}."
-    return''
+def character_context_component(characters):
+    return f"Previously mentioned characters: {comma_sep(characters) if characters else 'None'}."
 
 
-def loc_context_component(enttites):
-    locations = [v for k, v in enttites.items() if k.endswith('LOC')]
+def loc_context_component(locations):
     if not locations:
         locations = 'None'
     else:
-        locations = comma_sep(locations)[0]
+        locations = comma_sep(locations)
     return f"Locations mentioned: {locations}."
 
 
 def pronouns_context_component(pronouns):
-    return f"Pronouns in scope: {comma_sep(pronouns) if pronouns else 'None'}."
+    return f"Pronouns referenced: {comma_sep(pronouns) if pronouns else 'None'}."
 
 
 def make_context(passage_text):
     components = _make_context_components(passage_text)
     del components['v']
 
-    # map from context component to a function that writes text based on the component
+    # map from context component to a function that writes text specific to that component type
     context_component_function = {
-        "entities": entity_context_compoenent,
+        "entities": entity_context_component,
         "pronouns": pronouns_context_component,
         "summary": lambda x: x,
     }
+    default = lambda x: str(x)
 
     context_text = ""
     for k, component in components.items():
-        f = context_component_function.get(k, lambda x: str(x))
+        f = context_component_function.get(k, default)
         context_text += f(component) + " "
     return context_text

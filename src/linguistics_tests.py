@@ -7,7 +7,9 @@ A bell chimes in the house.
 Donald Trump shows up. You realize you've been in simulated White House this whole time.
 """,
     "Alex softens. Josephine picks up an apple.",
-    "She walks in beauty, like the night. It snows that night. The rain, the rain. You are free."
+    "She walks in beauty, like the night. It snows that night. The rain, the rain. You are free.",
+    "You decided to meet him on a pub called Le Bon Temps Roule.",
+    "The Golden Gate Bridge was painted green by Joe Biden."
     ]
 
 def test_neuralcoref():
@@ -28,24 +30,43 @@ def test_neuralcoref():
 
 
 def test_spacy_ner():
+    """
+    PERSON:      People, including fictional.
+    NORP:        Nationalities or religious or political groups.
+    FAC:         Buildings, airports, highways, bridges, etc.
+    ORG:         Companies, agencies, institutions, etc.
+    GPE:         Countries, cities, states.
+    LOC:         Non-GPE locations, mountain ranges, bodies of water.
+    PRODUCT:     Objects, vehicles, foods, etc. (Not services.)
+    EVENT:       Named hurricanes, battles, wars, sports events, etc.
+    WORK_OF_ART: Titles of books, songs, etc.
+    LAW:         Named documents made into laws.
+    LANGUAGE:    Any named language.
+    DATE:        Absolute or relative dates or periods.
+    TIME:        Times smaller than a day.
+    PERCENT:     Percentage, including ”%“.
+    MONEY:       Monetary values, including unit.
+    QUANTITY:    Measurements, as of weight or distance.
+    ORDINAL:     “first”, “second”, etc.
+    CARDINAL:    Numerals that do not fall under another type.
+    """
     import spacy
     nlp = spacy.load('en_core_web_lg')
-
-    # text = examples[-1]
-    # doc = nlp(text)
-    # print(doc.text)
-    # # for token in doc:
-    # #     print(token.text, token.pos_, token.dep_, token.ent_type_)
-    # for entity in doc.ents:
-    #     start, end = entity.start, entity.end
-    #     for token in doc[start:end]:
-    #         print(token.text, token.ent_type_)
 
     text = examples[-1]
     doc = nlp(text)
     print(doc.text)
     # for token in doc:
     #     print(token.text, token.pos_, token.dep_, token.ent_type_)
+    # print('entities')
+    # for entity in doc.ents:
+    #     start, end = entity.start, entity.end
+    #     for token in doc[start:end]:
+    #         print(token.text, token.ent_type_)
+
+    # for token in doc:
+    #     print(token.text, token.pos_, token.dep_, token.ent_type_)
+    print('pos_')
     pronouns = []
     for token in doc:
         print(token, token.pos_)
@@ -60,24 +81,35 @@ def test_bert_huggingface_ner():
     tokenizer = AutoTokenizer.from_pretrained("dslim/bert-base-NER")
     model = AutoModelForTokenClassification.from_pretrained("dslim/bert-base-NER")
     nlp = pipeline("ner", model=model, tokenizer=tokenizer)
-    example = examples[0]
+
+    tokens = nlp.tokenizer.tokenize(examples[-1])
+    print(type(tokens), type(tokens[0]))
+    print(tokens)
+
+    example = examples[-2]
     print(example)
     ner_results = nlp(example)
     print(ner_results)
 
-    same_ent = lambda x, y: x.split('-')[-1] == y.split('-')[-1]
+    same_ent_type = lambda x, y: x.split('-')[-1] == y.split('-')[-1]
     entities = []
+    prev_beg = {}
     for i, entity in enumerate(ner_results):
         prev_entity = ner_results[i - 1] if i > 0 else {}
-        if (entity['index'] == prev_entity.get('index', -2) + 1) \
-                and same_ent(entity['entity'], prev_entity.get('entity', 'nope')):
-            print(entity, prev_entity)
-            prev_entity['word'] = prev_entity.get('word', '') + ' ' + entity['word']
+        print(entity['word'], entity['entity'])
+        if entity['entity'].startswith('B'):
+            prev_beg = entity
+            entities.append(prev_beg)
+        elif entity['entity'].startswith('I'):
+            if entity['word'].startswith('##'):
+                word = entity['word'][2:]
+            else:
+                word = ' ' + entity['word']
+            prev_beg['word'] += word
         else:
-            entities.append(entity)
-    entities = [{'type': e['entity'], 'name': e['word']} for e in entities]
-    print(entities)
+            raise Exception("How?")
 
+    print([e for e in entities]
 
 
 test_bert_huggingface_ner()
