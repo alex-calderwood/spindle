@@ -2,10 +2,13 @@ from transformers import AutoTokenizer, AutoModelForTokenClassification
 from transformers import pipeline
 import os
 from collections import defaultdict
-import threading, time, sys, itertools
+import threading, time, sys, itertools, random
+import spacy
+from twee_utils import dedupe_in_order
 
+PRONOUN_STOP_LIST = {'what', 'there', 'anything', 'nothing', 'it', 'something'}
 
-def load_ner():
+def load_nlp_modules():
     def _animate(text, finished='Loaded model.'):
         # ['|', '/', '-', '\\']
         spaces = ' ' * len(text)
@@ -14,24 +17,25 @@ def load_ner():
             if done:
                 break
             # sys.stdout.write(f'\r{text}' + c)
-            sys.stdout.write(f'-{c}                                                 \r')
+            sys.stdout.write(f'-{c}                                          \r')
             sys.stdout.flush()
-            time.sleep(0.1)
-        sys.stdout.write(f'\r{finished}                \r')
+            time.sleep(random.uniform(0.02, 0.2))
+        sys.stdout.write(f'\r{finished}                                         \r')
     text = 'Loading English... Reticulating Splines... etc...'
     done = False
     t = threading.Thread(target=_animate, args=(text,))
     t.start()
     os.environ["TOKENIZERS_PARALLELISM"] = "true"
+    nlp = spacy.load('en_core_web_lg')
     tokenizer = AutoTokenizer.from_pretrained("dslim/bert-base-NER")
     model = AutoModelForTokenClassification.from_pretrained("dslim/bert-base-NER")
     ner_pipline = pipeline("ner", model=model, tokenizer=tokenizer)
     done = True
     t.join()
-    return ner_pipline
+    return ner_pipline, nlp
 
 
-ner_pipeline = load_ner()
+ner_pipeline, nlp = load_nlp_modules()
 
 
 def ner(text):
@@ -58,10 +62,21 @@ def ner(text):
     return dict(processed_entities)
 
 
+def parse(passage_text):
+    doc = nlp(passage_text)
+    pronouns = []
+    for token in doc:
+        if token.pos_ == 'PRON':
+            pronouns.append(token.text.lower())
+
+    return dedupe_in_order(pronouns, dont_add=PRONOUN_STOP_LIST)
+
+
 def _make_context_components(passage_text):
     return {
         'v': 1.0,  # Context version (I expect to go through a few iterations)
         'entities': ner(passage_text),
+        'pronouns': parse(passage_text),
     }
 
 
@@ -70,6 +85,8 @@ def comma_sep(list_of):
         return ''
     elif len(list_of) == 1:
         return list_of[0]
+    elif len(list_of) == 2:
+        return list_of[0] + ' and ' + list_of[1]
     else:
         return ', '.join(list_of[:-1]) + ', and ' + list_of[-1]
 
@@ -80,26 +97,37 @@ def entity_context_compoenent(entities):
 
 
 def character_context_component(enttites):
-    characters = [v.endswith('PER') for v in enttites.values()]
-    return f"Previously mentioned characters: {comma_sep(characters)}."
+    # characters = [v for k, v in enttites.items() if k.endswith('PER')][0]
+    # return f"Previously mentioned characters: {comma_sep(characters) if characters else 'None'}."
+    return''
 
 
 def loc_context_component(enttites):
-    locations = [v.endswith('LOC') for v in enttites.values()]
-    return f"Locations mentioned: {comma_sep(locations)}."
+    locations = [v for k, v in enttites.items() if k.endswith('LOC')]
+    if not locations:
+        locations = 'None'
+    else:
+        locations = comma_sep(locations)[0]
+    return f"Locations mentioned: {locations}."
+
+
+def pronouns_context_component(pronouns):
+    return f"Pronouns in scope: {comma_sep(pronouns) if pronouns else 'None'}."
 
 
 def make_context(passage_text):
     components = _make_context_components(passage_text)
+    del components['v']
 
     # map from context component to a function that writes text based on the component
     context_component_function = {
         "entities": entity_context_compoenent,
+        "pronouns": pronouns_context_component,
         "summary": lambda x: x,
     }
 
     context_text = ""
     for k, component in components.items():
         f = context_component_function.get(k, lambda x: str(x))
-        context_text += f(component) + "\n"
+        context_text += f(component) + " "
     return context_text

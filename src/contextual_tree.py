@@ -20,7 +20,7 @@ class ContextualTweeTree(NodeMixin):
         self.parent = parent
         self._links = None
         self.narrative_elements = self._extract_narrative_elements()
-        self.name = title_to_text(self.title) + str(self.narrative_elements)  # + " context: " + str(self.context)
+        self.name = title_to_text(self.title) + ': ' + str(self.narrative_elements)  # + " context: " + str(self.context)
         self.context = (parent.context + [parent.narrative_elements]) if (parent and compute_context) else []
 
     def __str__(self):

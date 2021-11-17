@@ -94,7 +94,7 @@ def retrospective(raw_passage, passages, title, links_to_do, links_done, link_to
     """
 
     # Even the raw passage should have invalid characters removed for use in the linguistic analysis
-    raw_passage = utils.remove_invalid_chars_from_passage(raw_passage)
+    raw_passage = passage = utils.remove_invalid_chars_from_passage(raw_passage)
 
     if utils.is_valid_passage(raw_passage):
         passage = utils.lower_case_links(raw_passage)

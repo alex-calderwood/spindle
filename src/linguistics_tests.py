@@ -6,7 +6,8 @@ A bell chimes in the house.
 "The night's still young. Why don't we stay up a little longer?"
 Donald Trump shows up. You realize you've been in simulated White House this whole time.
 """,
-    "Alex softens. Josephine picks up an apple."
+    "Alex softens. Josephine picks up an apple.",
+    "She walks in beauty, like the night. It snows that night. The rain, the rain. You are free."
     ]
 
 def test_neuralcoref():
@@ -30,15 +31,24 @@ def test_spacy_ner():
     import spacy
     nlp = spacy.load('en_core_web_lg')
 
+    # text = examples[-1]
+    # doc = nlp(text)
+    # print(doc.text)
+    # # for token in doc:
+    # #     print(token.text, token.pos_, token.dep_, token.ent_type_)
+    # for entity in doc.ents:
+    #     start, end = entity.start, entity.end
+    #     for token in doc[start:end]:
+    #         print(token.text, token.ent_type_)
+
     text = examples[-1]
     doc = nlp(text)
     print(doc.text)
     # for token in doc:
     #     print(token.text, token.pos_, token.dep_, token.ent_type_)
-    for entity in doc.ents:
-        start, end = entity.start, entity.end
-        for token in doc[start:end]:
-            print(token.text, token.ent_type_)
+    pronouns = []
+    for token in doc:
+        print(token, token.pos_)
 
 # test_spacy_ner()
 
