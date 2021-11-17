@@ -82,7 +82,7 @@ def human_writes(title):
     return utils.make_title(title) + '\n' + passage
 
 
-def retrospective(raw_passage, passages, title, links_to_do, links_done, link_to_parent):
+def retrospective(raw_passage, passages, title, links_to_do, links_done, link_to_parent, compute_context=True):
     """
     Post processing of a generated passage
         - Check the validity of the passage, append back to links to do if invalid
@@ -90,6 +90,7 @@ def retrospective(raw_passage, passages, title, links_to_do, links_done, link_to
         - Process the links in each passage (GPT-3 is trained on lower case page titles)
 
     :param link_to_parent: a dict mapping link to parent node
+    :param compute_context: whether or not to add context to the contextual nodes (can be slow)
     """
 
     # Even the raw passage should have invalid characters removed for use in the linguistic analysis
@@ -116,6 +117,7 @@ def retrospective(raw_passage, passages, title, links_to_do, links_done, link_to
             raw_passage=raw_passage,
             title=utils.make_title(title),
             parent=parent,
+            compute_context=compute_context
         )
         for link in links:
             link_to_parent[link] = node
@@ -236,7 +238,8 @@ def done(passages, passage_title, links_to_do, links_done, link_to_parent):
         passage_title = links_to_do.pop(0)
         passage = utils.make_title(passage_title) + "\nWhat a lazy writer. Didn\'t even get to this yet."
         print("done", passage)
-        passage, passages, links_to_do, links_done, link_to_parent = retrospective(passage, passages, passage_title, links_to_do, links_done, link_to_parent)
+        passage, passages, links_to_do, links_done, link_to_parent = \
+            retrospective(passage, passages, passage_title, links_to_do, links_done, link_to_parent, compute_context=False)
     return passages, links_to_do, links_done, link_to_parent
 
 

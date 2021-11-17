@@ -2,12 +2,16 @@ from collections import defaultdict
 from anytree import Node, RenderTree, NodeMixin
 from anytree.exporter import DotExporter
 from twee_utils import *
-from analysis import ner
+from analysis import make_context
 
 
 class ContextualTweeTree(NodeMixin):
     # AnyTree Docs: https://anytree.readthedocs.io/en/2.8.0/
-    def __init__(self, passage, title=None, parent=None, raw_passage=None):
+    def __init__(self, passage, title=None, parent=None, raw_passage=None, compute_context=True):
+        """
+        A contextualized node in a Twine tree, ie, a single passage.
+        :param compute_context: whether or not to add context to the contextual nodes (can be slow)
+        """
         self.lines = split_lines(passage)
         self.passage = passage
         self.passage_text = passage_to_text('\n'.join(self.lines[1:])) if not raw_passage else passage_to_text('\n'.join(raw_passage.split('\n')[1:]))
@@ -16,8 +20,8 @@ class ContextualTweeTree(NodeMixin):
         self.parent = parent
         self._links = None
         self.narrative_elements = self._extract_narrative_elements()
-        self.name = title_to_text(self.title) + str(self.narrative_elements)# + " context: " + str(self.context)
-        self.context = (parent.context + [parent.narrative_elements]) if parent else []
+        self.name = title_to_text(self.title) + str(self.narrative_elements)  # + " context: " + str(self.context)
+        self.context = (parent.context + [parent.narrative_elements]) if (parent and compute_context) else []
 
     def __str__(self):
         return f'<ContextualTweeTree {self.name}>'
@@ -41,11 +45,7 @@ class ContextualTweeTree(NodeMixin):
         """
         Run the NLP pipeline to extract from the current passage, all interesting story items.
         """
-        print("Passage text.", self.passage_text)
-        return {
-            'v': 1.0,
-            'entities': ner(self.passage_text),
-        }
+        return make_context(self.passage_text)
 
     @staticmethod
     def create(twee=None, passages=None):
