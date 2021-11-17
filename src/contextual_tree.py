@@ -2,7 +2,7 @@ from collections import defaultdict
 from anytree import Node, RenderTree, NodeMixin
 from anytree.exporter import DotExporter
 from twee_utils import *
-from analysis import make_context
+from analysis import make_context_components, write_context_text
 
 
 class ContextualTweeTree(NodeMixin):
@@ -16,12 +16,13 @@ class ContextualTweeTree(NodeMixin):
         self.passage = passage
         self.passage_text = passage_to_text('\n'.join(self.lines[1:])) if not raw_passage else passage_to_text('\n'.join(raw_passage.split('\n')[1:]))
         self.title = title if title else get_title(self.lines)
-        # the context is all relevant story details along the path from the root to the current node
         self.parent = parent
         self._links = None
         self.narrative_elements = self._extract_narrative_elements()
-        self.name = title_to_text(self.title) + ': ' + str(self.narrative_elements)  # + " context: " + str(self.context)
-        self.context = (parent.context + [parent.narrative_elements]) if (parent and compute_context) else []
+        # the context is all relevant story details along the path from the root to the current node
+        self.full_context = (parent.full_context + [parent.narrative_elements]) if (parent and compute_context) else []
+        self.context_text = write_context_text(self.full_context)
+        self.name = title_to_text(self.title) + ': ' + str(self.context_text)  # + " context: " + str(self.context)
 
     def __str__(self):
         return f'<ContextualTweeTree {self.name}>'
@@ -45,7 +46,7 @@ class ContextualTweeTree(NodeMixin):
         """
         Run the NLP pipeline to extract from the current passage, all interesting story items.
         """
-        return make_context(self.passage_text)
+        return make_context_components(self.passage_text)
 
     @staticmethod
     def create(twee=None, passages=None):

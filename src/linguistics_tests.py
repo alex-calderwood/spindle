@@ -109,10 +109,18 @@ def test_bert_huggingface_ner():
         else:
             raise Exception("How?")
 
-    print([e for e in entities]
+    print([e for e in entities])
 
 
-test_bert_huggingface_ner()
+# test_bert_huggingface_ner()
+
+def test_ner_in_practice():
+    from analysis import ner_pipeline, nlp, ner
+    ner(examples[-1])
+
+
+test_ner_in_practice()
+
 
 # from stanza.server import CoreNLPClient
 # stanza.download('en')

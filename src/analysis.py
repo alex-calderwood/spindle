@@ -1,6 +1,6 @@
 from transformers import AutoTokenizer, AutoModelForTokenClassification
 from transformers import pipeline
-from collections import defaultdict
+from collections import defaultdict, Counter
 import threading, time, sys, itertools, random, os
 import spacy
 from twee_utils import dedupe_in_order
@@ -29,8 +29,8 @@ def load_nlp_modules():
     t.start()
     os.environ["TOKENIZERS_PARALLELISM"] = "true"
     nlp = spacy.load('en_core_web_lg')
-    tokenizer = AutoTokenizer.from_pretrained("dslim/bert-base-NER")
-    model = AutoModelForTokenClassification.from_pretrained("dslim/bert-base-NER")
+    tokenizer = AutoTokenizer.from_pretrained("./dslim/bert-base-NER")
+    model = AutoModelForTokenClassification.from_pretrained("./dslim/bert-base-NER")
     ner_pipline = pipeline("ner", model=model, tokenizer=tokenizer)
     done = True
     t.join()
@@ -87,14 +87,6 @@ def parse(passage_text):
     return dedupe_in_order(pronouns, dont_add=PRONOUN_STOP_LIST)
 
 
-def _make_context_components(passage_text):
-    return {
-        'v': 1.0,  # Context version (I expect to go through a few iterations)
-        'entities': ner(passage_text),
-        'pronouns': parse(passage_text),
-    }
-
-
 def comma_sep(list_of):
     if not list_of:
         return ''
@@ -123,27 +115,76 @@ def loc_context_component(locations):
         locations = 'None'
     else:
         locations = comma_sep(locations)
-    return f"Locations mentioned: {locations}."
+    return f"Prior locations: {locations}."
 
 
 def pronouns_context_component(pronouns):
     return f"Pronouns referenced: {comma_sep(pronouns) if pronouns else 'None'}."
 
 
-def make_context(passage_text):
-    components = _make_context_components(passage_text)
-    del components['v']
-
-    # map from context component to a function that writes text specific to that component type
-    context_component_function = {
-        "entities": entity_context_component,
-        "pronouns": pronouns_context_component,
-        "summary": lambda x: x,
+def make_context_components(passage_text):
+    return {
+        'v': 1.1,  # Context version (I expect to go through a few iterations)
+        'entities': ner(passage_text),
+        'pronouns': parse(passage_text),
     }
-    default = lambda x: str(x)
+
+
+def join_context_components(context, topk=8):
+    """
+    Turn a list of context components (dicts) into a single dict of the most relevant context components
+
+    TODO: this is horrible and needs to be rewritten
+    """
+    if not context:
+        return {}
+
+    joined = {
+        'pronouns': [],
+        'entities': defaultdict(list),
+    }
+    for cc in context:
+        joined['pronouns'] += cc['pronouns']
+        for k, v in cc['entities'].items():
+            joined['entities'][k] += v
+
+    counted = {
+        'pronouns': Counter(joined['pronouns']),
+        'entities': {}
+    }
+    for ent_type, entities in joined['entities'].items():
+        counted['entities'][ent_type] = Counter(entities)
+
+    top_context_components = {}
+    top_context_components['pronouns'] = [p for p, count in counted['pronouns'].most_common(topk)]
+    top_context_components['entities'] = {
+        ent_type: entities.most_common(topk) for ent_type, entities in counted['entities'].items()
+    }
+    for ent_type, entities in top_context_components['entities'].items():
+        top_context_components['entities'][ent_type] = [e for (e, count) in entities]
+
+    return top_context_components
+
+
+# map from context component to a function that writes text specific to that component type
+CONTEXT_COMPONENT_FUNC = {
+    "entities": entity_context_component,
+    "pronouns": pronouns_context_component,
+    "summary": lambda x: x,
+}
+DEFAULT_COMPONENT_FUNC = lambda x: str(x)
+
+
+def write_context_text(components):
+    """
+    Turn a dict of context information into a paragraph of text describing the passage's context
+    """
+
+    # count up top components
+    top_context_components = join_context_components(components)
 
     context_text = ""
-    for k, component in components.items():
-        f = context_component_function.get(k, default)
+    for k, component in top_context_components.items():
+        f = CONTEXT_COMPONENT_FUNC.get(k, DEFAULT_COMPONENT_FUNC)
         context_text += f(component) + " "
     return context_text
