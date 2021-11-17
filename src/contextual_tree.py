@@ -2,20 +2,22 @@ from collections import defaultdict
 from anytree import Node, RenderTree, NodeMixin
 from anytree.exporter import DotExporter
 from twee_utils import *
+from analysis import ner
 
 
 class ContextualTweeTree(NodeMixin):
     # AnyTree Docs: https://anytree.readthedocs.io/en/2.8.0/
-    def __init__(self, passage, title=None, parent=None):
+    def __init__(self, passage, title=None, parent=None, raw_passage=None):
         self.lines = split_lines(passage)
         self.passage = passage
-        self.passage_text = passage_to_text(passage)
+        self.passage_text = passage_to_text('\n'.join(self.lines[1:])) if not raw_passage else passage_to_text('\n'.join(raw_passage.split('\n')[1:]))
         self.title = title if title else get_title(self.lines)
         # the context is all relevant story details along the path from the root to the current node
         self.parent = parent
-        self.context = (parent.context + [parent.extract_narrative_elements()]) if parent else []
-        self.name = title_to_text(self.title) + " context: " + str(self.context)
         self._links = None
+        self.narrative_elements = self._extract_narrative_elements()
+        self.name = title_to_text(self.title) + str(self.narrative_elements)# + " context: " + str(self.context)
+        self.context = (parent.context + [parent.narrative_elements]) if parent else []
 
     def __str__(self):
         return f'<ContextualTweeTree {self.name}>'
@@ -35,11 +37,15 @@ class ContextualTweeTree(NodeMixin):
     def get_links(self):
         return self._links if self._links else get_links(self.passage)
 
-    def extract_narrative_elements(self):
+    def _extract_narrative_elements(self):
         """
         Run the NLP pipeline to extract from the current passage, all interesting story items.
         """
-        return {'name': self.name}
+        print("Passage text.", self.passage_text)
+        return {
+            'v': 1.0,
+            'entities': ner(self.passage_text),
+        }
 
     @staticmethod
     def create(twee=None, passages=None):

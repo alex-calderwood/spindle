@@ -38,7 +38,8 @@ balance_pairs = [
 
 # Characters that must not occur within a passage's outgoing links.
 # TODO the parenthesis make is such that previous() links are dissalowed, and this should be allowed in the future
-INVALID_LINK_CHARACTERS = '.|[]()<>,*/\\'
+INVALID_LINK_CHARACTERS = '.|[]()<>,*/\\\"\''
+INVALID_PASSAGE_CHARACTERS = '@'
 
 balancer = strbalance.Balance(pairs=balance_pairs, custom=True)
 
@@ -379,10 +380,25 @@ def clean_images(twee):
 	return twee
 
 
+def remove_invalid_chars_from_passage(passage_text):
+	"""
+	Return a cleaned passage if the passage is invalid.
+	If the passage is valid, return None
+	"""
+	# Check if any of the characters are invalid
+	bad_chars = [c for c in passage_text if c in INVALID_PASSAGE_CHARACTERS]
+	if bad_chars:
+		for b in set(bad_chars):
+			passage_text = passage_text.replace(b, '')
+	return passage_text
+
+
 def validate_link_text(link):
 	"""
 	Return a validate link if the link is invalid.
 	If the link is valid, return None
+
+	# TODO if there are bad characters in a [['simple']] link, we should turn it into [['simple'|simple]]
 	"""
 	new_link = None
 	# Check if any of the characters are invalid

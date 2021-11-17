@@ -82,7 +82,7 @@ def human_writes(title):
     return utils.make_title(title) + '\n' + passage
 
 
-def retrospective(passage, passages, title, links_to_do, links_done, link_to_parent):
+def retrospective(raw_passage, passages, title, links_to_do, links_done, link_to_parent):
     """
     Post processing of a generated passage
         - Check the validity of the passage, append back to links to do if invalid
@@ -92,8 +92,11 @@ def retrospective(passage, passages, title, links_to_do, links_done, link_to_par
     :param link_to_parent: a dict mapping link to parent node
     """
 
-    if utils.is_valid_passage(passage):
-        passage = utils.lower_case_links(passage)
+    # Even the raw passage should have invalid characters removed for use in the linguistic analysis
+    raw_passage = utils.remove_invalid_chars_from_passage(raw_passage)
+
+    if utils.is_valid_passage(raw_passage):
+        passage = utils.lower_case_links(raw_passage)
         links = utils.get_links(passage)
         passage, links = utils.clean_link_text(passage, links)
 
@@ -110,6 +113,7 @@ def retrospective(passage, passages, title, links_to_do, links_done, link_to_par
         parent = link_to_parent[title]
         node = ContextualTweeTree(
             passage,
+            raw_passage=raw_passage,
             title=utils.make_title(title),
             parent=parent,
         )
