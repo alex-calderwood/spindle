@@ -112,8 +112,11 @@ def comma_sep(list_of):
 
 
 def entity_context_component(entities):
-    characters = list(np.array([v for k, v in entities.items() if k.endswith('PER')]).flatten())
-    locations = list(np.array([v for k, v in entities.items() if k.endswith('LOC')]).flatten())
+    def flatten(t):
+        return [item for sublist in t for item in sublist]
+
+    characters = flatten([v for k, v in entities.items() if k.endswith('PER')])
+    locations = flatten([v for k, v in entities.items() if k.endswith('LOC')])
 
     return character_context_component(characters) + " " + \
         loc_context_component(locations)
@@ -124,11 +127,7 @@ def character_context_component(characters):
 
 
 def loc_context_component(locations):
-    if not locations:
-        locations = 'None'
-    else:
-        locations = comma_sep(locations)
-    return f"Prior locations: {locations}."
+    return f"Prior locations: {comma_sep(locations) if locations else 'None'}."
 
 
 def pronouns_context_component(pronouns):

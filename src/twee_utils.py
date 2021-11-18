@@ -301,10 +301,11 @@ def get_title(lines):
 	return lines[0].strip()
 
 
-def title_to_text(title):
-	match = re.search(r'::(.*?) ?\[(.*)]', title)
-	if match:
-		return match.group(1).strip()
+def title_to_text(title, remove_tag=False):
+	if remove_tag:
+		match = re.search(r'::(.*?) ?\[(.*)]', title)
+		if match:
+			return match.group(1).strip()
 	match = re.search(r'::(.+)', title)
 	return match.group(1).strip() if match else ''
 
@@ -335,23 +336,14 @@ def twee_to_gen_format(twee):
 
 def is_start(passage):
 	# TODO do this better
-	title = title_to_text(get_title(split_lines(passage)))
+	title = title_to_text(get_title(split_lines(passage)), remove_tag=True)
 	return 'start' == str(re.sub(r'\s+', ' ', title.lower()))
 
 
 def is_special_passage(passage):
-	title = title_to_text(get_title(split_lines(passage)))
+	title = title_to_text(get_title(split_lines(passage)), remove_tag=True)
 	text = str(re.sub(r'\s+', ' ', title.lower()))
 	return any([text == s.lower() for s in SPECIAL_PASSAGES])
-
-
-def clean_numbers(passage, repl='-'):
-	"""
-	Remove passage numbers: [1] -> [-]
-	"""
-	lines = split_lines(passage)
-	lines[0] = re.sub(num_re, '[' + repl + ']', lines[0])
-	return '\n'.join(lines)
 
 
 def clean_link_text(passage, links):
@@ -365,20 +357,29 @@ def clean_link_text(passage, links):
 	return passage, links
 
 
-def re_number(passages, repl='-'):
-	"""
-	Order passages - add passage numbers back to the de-numbered passages
-	"""
-	repl = '[' + repl + ']'
-	i = 1
-	new_passages = []
-	for p in passages:
-		p_lines = split_lines(p)
-		if p_lines[0].endswith(repl):
-			p_lines[0] = p_lines[0].replace(repl, '[' + str(i) + ']')
-			i += 1
-		new_passages.append('\n'.join(p_lines))
-	return new_passages
+# TODO Don't thikn we need these, will delete soon
+# def clean_numbers(passage, repl='-'):
+# 	"""
+# 	Remove passage numbers: [1] -> [-]
+# 	"""
+# 	lines = split_lines(passage)
+# 	lines[0] = re.sub(num_re, '[' + repl + ']', lines[0])
+# 	return '\n'.join(lines)
+
+# def re_number(passages, repl='-'):
+# 	"""
+# 	Order passages - add passage numbers back to the de-numbered passages
+# 	"""
+# 	repl = '[' + repl + ']'
+# 	i = 1
+# 	new_passages = []
+# 	for p in passages:
+# 		p_lines = split_lines(p)
+# 		if p_lines[0].endswith(repl):
+# 			p_lines[0] = p_lines[0].replace(repl, '[' + str(i) + ']')
+# 			i += 1
+# 		new_passages.append('\n'.join(p_lines))
+# 	return new_passages
 
 
 def clean_images(twee):
@@ -572,7 +573,7 @@ def open_file(file):
 def clean_twee(twee):
 	twee = clean_images(twee)
 	passages = order([p for p in split_passages(twee)])
-	passages = [clean_numbers(p) for p in passages]
+	# passages = [clean_numbers(p) for p in passages] # This actually turns out to be important
 	passages = [remove_html(p) for p in passages if not is_empty_passage(p)]
 	twee = unsplit_passages(passages)
 	twee = remove_duplicate_newlines(twee)

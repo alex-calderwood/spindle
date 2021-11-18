@@ -95,6 +95,20 @@ class TestTweeToGen(unittest.TestCase):
             completion
         )
 
+    @parameterized.expand([
+        [":: lick", 'The characters are Bob and Bill.', '<|begin|>The characters are Bob and Bill.<|title|>:: lick<|start|>', ' <|end|>'],  # Remember there is a space at the end
+    ])
+    def test_twee_to_gen_w_context(self, twee, context, prompt, completion):
+        gen_prompt, gen_completion = twee_to_gen_format_3(twee, context=context)
+        self.assertEqual(
+            gen_prompt,
+            prompt
+        )
+        self.assertEqual(
+            gen_completion,
+            completion
+        )
+
 class TestGenToTwee(unittest.TestCase):
     @parameterized.expand([
         ['<|begin|>:: lick<|start|>', '<|end|>', ":: lick"],  # Not sure this is all correct

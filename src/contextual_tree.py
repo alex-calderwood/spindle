@@ -22,7 +22,7 @@ class ContextualTweeTree(NodeMixin):
         # the context is all relevant story details along the path from the root to the current node
         self.full_context = (parent.full_context + [parent.narrative_elements]) if (parent and compute_context) else []
         self.context_text = write_context_text(self.full_context)
-        self.name = title_to_text(self.title) + ': ' + str(self.context_text)  # + " context: " + str(self.context)
+        self.name = self.title #+ ': ' + str(self.context_text)  # + " context: " + str(self.context)
 
     def __str__(self):
         return f'<ContextualTweeTree {self.name}>'
@@ -31,13 +31,16 @@ class ContextualTweeTree(NodeMixin):
         print(RenderTree(self).by_attr('name'))
 
     def render_root(self):
+        print(self.get_root().render())
+
+    def get_root(self):
         node = self
         parent = node.parent
         while parent is not None:
             temp = parent
             parent = node.parent
             node = temp
-        print(node.render())
+        return node
 
     def get_links(self):
         return self._links if self._links else get_links(self.passage)
@@ -71,7 +74,7 @@ class ContextualTweeTree(NodeMixin):
         # Create a contextual tree
         root = ContextualTweeTree(start)
         ContextualTweeTree._traverse_and_create_context(root, passage_dict)
-        return root, passages
+        return root, passage_dict
 
     @staticmethod
     def _traverse_and_create_context(node, passage_dict):
