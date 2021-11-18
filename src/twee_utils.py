@@ -41,6 +41,8 @@ balance_pairs = [
 INVALID_LINK_CHARACTERS = '.|[]()<>,*/\\\"\''
 INVALID_PASSAGE_CHARACTERS = '@'
 
+SPECIAL_PASSAGES = ['StoryTitle', 'StorySubtitle', 'StoryAuthor', 'StoryMenu', 'StorySettings', 'StoryIncludes', 'Annotations']
+
 balancer = strbalance.Balance(pairs=balance_pairs, custom=True)
 
 
@@ -139,7 +141,7 @@ def try_unzip(file, destination):
 
 
 def make_temp_file(contents):
-	path = f'./temporary_game_files/html_{random.uniform(1000000, 2000000)}'
+	path = f'../temporary_game_files/html_{random.uniform(1000000, 2000000)}'
 	with open(path, 'w') as file:
 		file.write(contents)
 	return path
@@ -157,7 +159,7 @@ def get_html_source(dir):
 	* Important byproduct: if you call this multiple times, the previously returned files may be deleted by subsequent
 	calls. We expect you to move them or deal with them before calling this again *
 	"""
-	temp_dir = f'./temporary_game_files/{random.uniform(1000000, 2000000)}/'
+	temp_dir = f'../temporary_game_files/{random.uniform(1000000, 2000000)}/'
 	if os.path.isdir(temp_dir):
 		shutil.rmtree(temp_dir)
 
@@ -330,6 +332,12 @@ def is_start(passage):
 	# TODO do this better
 	title = title_to_text(get_title(split_lines(passage)))
 	return 'start' == str(re.sub(r'\s+', ' ', title.lower()))
+
+
+def is_special_passage(passage):
+	title = title_to_text(get_title(split_lines(passage)))
+	text = str(re.sub(r'\s+', ' ', title.lower()))
+	return any([text == s.lower() for s in SPECIAL_PASSAGES])
 
 
 def clean_numbers(passage, repl='-'):
@@ -507,14 +515,14 @@ def untwee_all(source_html_dir, write_twee_to):
 
 
 def untwee(html_path):
-	untwee_cmd = f"twee/untwee {html_path}"  # launch untwee (python2 script) using bash
+	untwee_cmd = f"../twee/untwee {html_path}"  # launch untwee (python2 script) using bash
 	process = subprocess.Popen(untwee_cmd.split(), stdout=subprocess.PIPE)
 	twee_text, error = process.communicate()  # receive output from the python2 script
 	return twee_text.strip(), error
 
 
 def twee(twee_path):
-	twee_cmd = f"twee/twee {twee_path}"  # launch untwee (python2 script) using bash
+	twee_cmd = f"../twee/twee {twee_path}"  # launch untwee (python2 script) using bash
 	process = subprocess.Popen(twee_cmd.split(), stdout=subprocess.PIPE)
 	html, error = process.communicate()  # receive output from the python2 script
 	return html.strip(), error
@@ -535,8 +543,9 @@ def clean_twee(twee):
 
 
 def is_empty_passage(passage):
+	# TODO the last case better
 	passage = passage.strip()
-	return not(bool(passage)) or passage == '::untitled passage'
+	return not(bool(passage)) or passage == '::untitled passage' or  '[stylesheet]' in passage
 
 
 def get_macros(twee, replace=None):
@@ -547,6 +556,8 @@ def get_macros(twee, replace=None):
 def replace_macros(twee):
 	twee = re.sub(r'<<(.*?)>> ?', '', twee)
 	return twee
+
+# TODO get rid of scripts :: \nThe day after the ceremony, flush with determination and new power, you called a meeting and told all the staff that student deaths <<replace "should be" "could be">>must be<<endreplace>> eliminated in the next year.\n\nYou were given a [[standing ovation.|unknown]]\n\n\n:: inlinecss [script]\nString.prototype.unDash = function()\n{\n\tvar s = this.split("-");\n\tif(s.length > 1)\n\t\tfor(var t=1; t < s.length; t++)\n\t\t\ts[t] = s[t].substr(0,1).toUpperCase() + s[t].substr(1);\n\tretur...
 
 
 if __name__ == '__main__':

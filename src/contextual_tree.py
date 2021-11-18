@@ -71,7 +71,7 @@ class ContextualTweeTree(NodeMixin):
         # Create a contextual tree
         root = ContextualTweeTree(start)
         ContextualTweeTree._traverse_and_create_context(root, passage_dict)
-        return root
+        return root, passages
 
     @staticmethod
     def _traverse_and_create_context(node, passage_dict):
@@ -99,7 +99,7 @@ if __name__ == '__main__':
     with open(game) as f:
         twee_str = f.read()
         print(f'tree for {game}:')
-        tree = ContextualTweeTree.create(twee=twee_str)
+        tree, _ = ContextualTweeTree.create(twee=twee_str)
         # dot = DotExporter(tree, nodenamefunc=lambda n: f'{n.name} context {n.context}')
         dot = DotExporter(tree, nodenamefunc=lambda n: f'{n.name}')
         dot.to_picture("./tree.png")

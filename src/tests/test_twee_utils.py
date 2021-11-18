@@ -44,6 +44,24 @@ class TestIsStartIntegration(unittest.TestCase):
         )
 
 
+class TestIsSpecialPassage(unittest.TestCase):
+    @parameterized.expand([
+        ["::lick", False],
+        ["::StoryTitle", True],
+        ["::StoryTitle", True],
+        [":: StoryTitle", True],
+        [":: StoryTitle [-]", True],
+        [":: storytitle [4]", True],
+        [":: Started to lick [4]", False],
+        [":: StorySubtitle", True],
+        [":: Storymenu", True],
+    ])
+    def test_is_special(self, passage, actual):
+        self.assertEqual(
+            is_special_passage(passage),
+            actual
+        )
+
 class TestTitleToText(unittest.TestCase):
     @parameterized.expand([
         ["::lick", "lick"],
@@ -111,6 +129,7 @@ class TestTweeParsing(unittest.TestCase):
         [" ", True],
         ["", True],
         [":: a thing", False],
+        [":: a stylesheet [stylesheet]", True]
     ])
     def test_is_empty_passage(self, passage, empty):
         self.assertEqual(

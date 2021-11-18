@@ -40,7 +40,7 @@ def load_nlp_modules():
 ner_pipeline, nlp = load_nlp_modules()
 
 
-def ner(text):
+def ner(text, verbose=True):
     """
     Extract Named Entities from a text, return a dictionary.
 
@@ -52,14 +52,24 @@ def ner(text):
     ner_results = ner_pipeline(text)
     # Not checking that the internal entity type in each word part matches, but should...
     # same_ent_type = lambda x, y: x.split('-')[-1] == y.split('-')[-1]
+
+    # Join multi word-part entities together
+    # words at the beginning of an entity are marked B-, others are marked I-
     entities = []
     prev_beg = {}
     for i, entity in enumerate(ner_results):
+        # print(prev_beg, entity)
         # print(entity['word'], entity['entity'])
         if entity['entity'].startswith('B'):
             prev_beg = entity
             entities.append(prev_beg)
         elif entity['entity'].startswith('I'):
+            # I don't know why I's appear with no B's sometimes. Not sure this is the correct solution
+            if not prev_beg:
+                prev_beg = entity
+                entities.append(prev_beg)
+                continue
+            # Add the intermediate word to the end of the entity
             if entity['word'].startswith('##'):
                 word = entity['word'][2:]
             else:
@@ -73,6 +83,9 @@ def ner(text):
         e_type = e['entity']
         text = e['word']
         processed_entities[e_type].append(text)
+
+    if verbose:
+        print(processed_entities)
 
     return dict(processed_entities)
 
