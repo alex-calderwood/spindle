@@ -27,6 +27,7 @@ END = '<|ef|>'
 BEGIN = BEGIN if SMALL else '<|begin|>'
 NL = NL if SMALL else '<newline>'
 END = END if SMALL else '<|end|>'
+ENDCONTEXT = '<|title|>'
 ENDPROMPT = '<|start|>'
 
 balance_pairs = [
@@ -41,7 +42,11 @@ balance_pairs = [
 INVALID_LINK_CHARACTERS = '.|[]()<>,*/\\\"\''
 INVALID_PASSAGE_CHARACTERS = '@'
 
-SPECIAL_PASSAGES = ['StoryTitle', 'StorySubtitle', 'StoryAuthor', 'StoryMenu', 'StorySettings', 'StoryIncludes', 'Annotations']
+# https://dan-q.github.io/twee2/documentation.html
+SPECIAL_PASSAGES = [
+	'StoryTitle', 'StorySubtitle', 'StoryAuthor', 'StoryMenu',
+	'StorySettings', 'StoryIncludes', 'Annotations', 'audio sources'
+]
 
 balancer = strbalance.Balance(pairs=balance_pairs, custom=True)
 
@@ -429,7 +434,7 @@ def remove_duplicate_newlines(twee):
 	return re.sub(r'\n+', '\n', twee)
 
 
-def make_prompt(title):
+def make_prompt(title, context=''):
 	"""
 	input:
 		a twee title ie
@@ -438,15 +443,20 @@ def make_prompt(title):
 		a twee title surounded by GPT-3 readable start/end tokens
 		<begin tokens>:: titlename<end tokens>
 	"""
-	return BEGIN + title + ENDPROMPT
+	if context:
+		context = context.strip() + ENDCONTEXT
+
+	return BEGIN + context + title + ENDPROMPT
 
 
 def make_completion(passage_without_title):
 	"""
 	input:
 		'a passage containing [[links|link]], etc'
-	ouput:
+	output:
 		' a passage containing [[links|link]], etc<end tokens>'
+
+	The completion should always begin with a space.
 	"""
 	return " " + passage_without_title.replace('\n', NL).strip() + END
 
@@ -461,8 +471,31 @@ def twee_to_gen_format_2(twee):
 
 def gen_to_twee_format_2(prompt='', response=''):
 	twee = prompt + response
-	cleaned = twee.replace(BEGIN, '').replace(ENDPROMPT, '').replace(END, '').replace(NL, '\n')
+	cleaned = twee.replace(BEGIN, '').replace(ENDPROMPT, '').replace(ENDCONTEXT, '').replace(END, '').replace(NL, '\n')
 	return cleaned
+
+
+def twee_to_gen_format_3(twee, context=''):
+	"""
+	Prepare for GPT-3 using context.
+	"""
+	lines = [p for p in split_lines(twee)]
+	title = lines[0]
+	rest_of_passage = remove_duplicate_newlines(unsplit_lines(lines[1:]))
+	return make_prompt(title, context=context), make_completion(rest_of_passage)
+
+
+def gen_to_twee_format_3(prompt='', response=''):
+	"""
+	Process the generated content from GPT-3
+	"""
+	bad_things = f'{re.escape(BEGIN)}|{re.escape(ENDPROMPT)}|{re.escape(ENDCONTEXT)}|{re.escape(END)}'
+	prompt = re.subn(bad_things, '', prompt)[0].replace(NL, '\n')
+	response = re.subn(bad_things, '', response)[0].replace(NL, '\n')
+
+	nl = '\n' if prompt and response else ''
+	twee = prompt + nl + response
+	return twee
 
 
 def gen_to_twee_format(gen):
@@ -482,6 +515,10 @@ def split_passages(twee):
 
 def unsplit_passages(passages):
 	return '\n\n'.join(passages)
+
+
+def unsplit_lines(lines):
+	return '\n'.join(lines)
 
 
 def page_number(passage):
@@ -545,12 +582,19 @@ def clean_twee(twee):
 def is_empty_passage(passage):
 	# TODO the last case better
 	passage = passage.strip()
-	return not(bool(passage)) or passage == '::untitled passage' or  '[stylesheet]' in passage
+	top = split_lines(passage)[0]
+	return not(bool(passage)) or passage == '::untitled passage' or '[stylesheet]' in top or '[script]' in top or '[twee2]' in top
 
 
 def get_macros(twee, replace=None):
 	macros = re.findall(r'<<(.*?)>>', twee)
 	return macros
+
+
+def replace_obvious_macros(twee):
+	twee = re.sub(r'<<begin>>', '[[begin]]', twee)
+	return twee
+
 
 
 def replace_macros(twee):

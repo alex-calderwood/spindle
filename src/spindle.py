@@ -27,7 +27,7 @@ def generate(original_title):
     completion = get_completion(prompt)
 
     # Process the generated completion back into plain twee
-    twee_passage = title_to_save + '\n' + utils.gen_to_twee_format_2(completion)
+    twee_passage = title_to_save + '\n' + utils.gen_to_twee_format_3(completion)
     return twee_passage
 
 

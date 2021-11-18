@@ -40,7 +40,7 @@ def load_nlp_modules():
 ner_pipeline, nlp = load_nlp_modules()
 
 
-def ner(text, verbose=True):
+def ner(text, verbose=False):
     """
     Extract Named Entities from a text, return a dictionary.
 
