@@ -1,4 +1,6 @@
-# Spindle - Naive Twine Generation
+# Spindle - (work in progress)
+
+Machine-human cowriting is still in a nascent stage. Spindle is a tool that for interactive, branching fiction writing. 
 
 ![Spindle](spindle.png)
 
