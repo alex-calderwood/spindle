@@ -16,8 +16,8 @@ data_dir = './generated_games/'
 def generate(original_title):
     print('generating for title: ' + original_title)
 
-    title_to_save = utils.make_title(original_title, with_num=False, process=False)  # readable by twee
-    processed_title = utils.make_title(original_title, with_num=False, process=True)  # ready for GPT-3
+    title_to_save = utils.make_title(original_title, process=False)  # readable by twee
+    processed_title = utils.make_title(original_title, process=True)  # ready for GPT-3
     prompt = utils.make_prompt(processed_title)
 
     if verbose:

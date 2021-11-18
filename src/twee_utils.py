@@ -9,7 +9,6 @@ import strbalance
 
 num_re = r'\[([0-9]+.?[0-9]*)\]'
 
-replaced_number_postfix = '[-]'
 image_postfix = '[Twine.image]'
 valid_postfixes = {replaced_number_postfix, image_postfix}
 
@@ -121,10 +120,10 @@ def dedupe_in_order(in_list, dont_add=set()):
 
 
 def init_twee(title, author):
-	text = make_title("StoryTitle", False, process=False, line_end='\n')
+	text = make_title("StoryTitle", process=False, line_end='\n')
 	text += title + '\n'
 	text += '\n'
-	text += make_title("StoryAuthor", False, process=False, line_end='\n')
+	text += make_title("StoryAuthor", process=False, line_end='\n')
 	text += author + '\n\n'
 	return text
 
@@ -285,11 +284,10 @@ def make_passage_dict(passages):
 	return {title_to_text(get_title(split_lines(passage))): passage for passage in passages}
 
 
-def make_title(passage_name, with_num=True, process=True, line_end=''):
+def make_title(passage_name, process=True, line_end=''):
 	"""Make a valid page header from a name"""
 	passage_name = passage_name.lower() if process else passage_name
-	num = f" {replaced_number_postfix}" if with_num else ''
-	return f':: {passage_name}{num}{line_end}'
+	return f':: {passage_name}{line_end}'
 
 
 @cached(cache={})  # cache passages that have already been split to reducce compute time
@@ -587,7 +585,7 @@ def is_empty_passage(passage):
 	return not(bool(passage)) or passage == '::untitled passage' or '[stylesheet]' in top or '[script]' in top or '[twee2]' in top
 
 
-def get_macros(twee, replace=None):
+def get_macros(twee):
 	macros = re.findall(r'<<(.*?)>>', twee)
 	return macros
 

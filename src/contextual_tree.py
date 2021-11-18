@@ -6,6 +6,7 @@ from analysis import make_context_components, write_context_text
 
 
 class ContextualTweeTree(NodeMixin):
+    # TODO need to turn it into a tree
     # AnyTree Docs: https://anytree.readthedocs.io/en/2.8.0/
     def __init__(self, passage, title=None, parent=None, raw_passage=None, compute_context=True):
         """
