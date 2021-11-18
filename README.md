@@ -1,6 +1,6 @@
 # Spindle - (work in progress)
 
-Machine-human cowriting is still in a nascent stage. Spindle is a tool that for interactive, branching fiction writing. 
+Spindle is a tool that for interactive, branching fiction writing. Machine-human cowriting is still in a nascent stage - but what can we do with new advents in large language models?
 
 ![Spindle](spindle.png)
 
