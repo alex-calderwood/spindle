@@ -12,6 +12,8 @@ MAX_GEN_COUNT = 16
 
 data_dir = './generated_games/'
 
+TWEE_DIRS = ['../twee/', './twee/']
+
 
 def generate(original_title):
     print('generating for title: ' + original_title)
@@ -145,18 +147,24 @@ def make_and_run_twee(story_title, by, passages):
     html_file = os.path.basename(filename).split('.')[0] + '.html'
     html_file = os.path.join(data_dir, html_file)
 
-    try:
-        twee, error = utils.twee(filename)
-        with open(html_file, 'wb') as f:
-            f.write(twee)
-            print(f"Wrote game to {html_file}")
-    except Exception as e:
-        print(f"Unable to Twee {filename} {e}")
+    did_twee, did_open = False, False
+    for t in TWEE_DIRS:
+        try:
+            twee, error = utils.twee(filename, t)
+            with open(html_file, 'wb') as f:
+                f.write(twee)
+                print(f"Wrote game to {html_file}")
+                did_twee
+        except Exception as e:
+            print(f"Unable to Twee {filename} {e}")
 
-    try:
-        utils.open_file(html_file)
-    except Exception as e:
-        print(f"Unable to open {html_file} {e}")
+        try:
+            utils.open_file(html_file)
+            did_open = True
+        except Exception as e:
+            print(f"Unable to open {html_file} {e}")
+        if did_twee and did_open:
+            continue
 
 
 def interactive():

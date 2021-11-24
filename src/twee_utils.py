@@ -10,7 +10,6 @@ import strbalance
 num_re = r'\[([0-9]+.?[0-9]*)\]'
 
 image_postfix = '[Twine.image]'
-valid_postfixes = {replaced_number_postfix, image_postfix}
 
 formats = shutil.get_unpack_formats()
 valid_zip_extensions = []
@@ -248,13 +247,11 @@ def valid_passage_indicators(passage):
 	# links = get_links(passage)
 	# links_valid = all([is_valid_passage(passage) for l in links])
 	# valid_name = bool(re.search(r'::(.*) \[?(.*)]?', lines[0]))
-	# valid_postfix = any(lines[0].endswith(post) for post in valid_postfixes)
 	return {
 		'valid_prefix': valid_prefix,
 		'balanced': balanced,
 		# 'link_valid': link_valid,
 		# 'valid_name': valid_name,
-		# 'valid_postfix': valid_postfix,
 	}
 
 
@@ -550,15 +547,15 @@ def untwee_all(source_html_dir, write_twee_to):
 			w.write(html)
 
 
-def untwee(html_path):
-	untwee_cmd = f"../twee/untwee {html_path}"  # launch untwee (python2 script) using bash
+def untwee(html_path, twee_exec='../twee/'):
+	untwee_cmd = f"{twee_exec}untwee {html_path}"  # launch untwee (python2 script) using bash
 	process = subprocess.Popen(untwee_cmd.split(), stdout=subprocess.PIPE)
 	twee_text, error = process.communicate()  # receive output from the python2 script
 	return twee_text.strip(), error
 
 
-def twee(twee_path):
-	twee_cmd = f"../twee/twee {twee_path}"  # launch untwee (python2 script) using bash
+def twee(twee_path, twee_exec='../twee/'):
+	twee_cmd = f"{twee_exec}twee {twee_path}"  # launch untwee (python2 script) using bash
 	process = subprocess.Popen(twee_cmd.split(), stdout=subprocess.PIPE)
 	html, error = process.communicate()  # receive output from the python2 script
 	return html.strip(), error
