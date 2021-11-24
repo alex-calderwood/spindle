@@ -11,7 +11,6 @@ verbose = False
 MAX_GEN_COUNT = 16
 
 data_dir = './generated_games/'
-
 TWEE_DIRS = ['../twee/', './twee/']
 
 
@@ -45,20 +44,6 @@ def get_command(title):
             f'(W/g/f/v/q): '
         ).lower()
     return do_gen
-
-
-#
-# def ask_do_gen(title):
-#     options = [
-#         (f'write {title} yourself', 'w'),
-#         (f'generate {title}', 'g'),
-#         (f'view the written passages.','v'),
-#         (f'generate all remaining passages.','g'),
-#     ]
-#
-#     selection, i = make_selection([c[0] for c in options])
-#
-#     return options[i][1]
 
 
 def select_passage(passages_todo):

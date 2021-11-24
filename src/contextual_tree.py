@@ -23,7 +23,7 @@ class ContextualTweeTree(NodeMixin):
         # the context is all relevant story details along the path from the root to the current node
         self.full_context = (parent.full_context + [parent.narrative_elements]) if (parent and compute_context) else []
         self.context_text = write_context_text(self.full_context)
-        self.name = self.title #+ ': ' + str(self.context_text)  # + " context: " + str(self.context)
+        self.name = self.title  #+ ': ' + str(self.context_text)  # + " context: " + str(self.context)
 
     def __str__(self):
         return f'<ContextualTweeTree {self.name}>'
@@ -74,11 +74,11 @@ class ContextualTweeTree(NodeMixin):
 
         # Create a contextual tree
         root = ContextualTweeTree(start)
-        ContextualTweeTree._traverse_and_create_context(root, passage_dict)
+        ContextualTweeTree._traverse_and_create_context(root, passage_dict, defaultdict(bool))
         return root, passage_dict
 
     @staticmethod
-    def _traverse_and_create_context(node, passage_dict):
+    def _traverse_and_create_context(node, passage_dict, visited):
         """
         Helper method for tree creation.
         Add children to a twee tree by recursively iterating over the links in each twee passage,
@@ -88,17 +88,20 @@ class ContextualTweeTree(NodeMixin):
         :param passage_dict: a mapping from link (title text) to passage
         """
         for link in node.get_links():
+            if visited[link]:
+                continue
             passage = passage_dict.get(link)
             if passage:
                 # create the child and add it to the parent
                 child_node = ContextualTweeTree(passage, title=make_title(link), parent=node)
-                ContextualTweeTree._traverse_and_create_context(child_node, passage_dict)
+                visited[link] = True
+                ContextualTweeTree._traverse_and_create_context(child_node, passage_dict, visited)
             else:
                 print(f"passage {link} does not exist")
 
 
 if __name__ == '__main__':
-    game = './generated_games/the_garden_2.tw'
+    game = './generated_games/the_garden_3.tw'
     print(f'game {game}')
     with open(game) as f:
         twee_str = f.read()
