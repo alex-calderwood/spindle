@@ -278,7 +278,7 @@ def make_passage_dict(passages):
 	Create a dictionary mapping title to passage
 	:rtype a dict: key: title_text, value: full_passage
 	"""
-	return {title_to_text(get_title(split_lines(passage))): passage for passage in passages}
+	return {title_to_text(get_title(split_lines(passage)), remove_tag=True): passage for passage in passages}
 
 
 def make_title(passage_name, process=True, line_end=''):

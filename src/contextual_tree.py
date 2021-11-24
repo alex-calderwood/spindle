@@ -101,6 +101,7 @@ class ContextualTweeTree(NodeMixin):
 
 
 if __name__ == '__main__':
+    # TODO need to check whether name [1] should link to name or not
     game = './generated_games/the_garden_3.tw'
     print(f'game {game}')
     with open(game) as f:
