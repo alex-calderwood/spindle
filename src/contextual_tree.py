@@ -17,6 +17,7 @@ class ContextualTweeTree(NodeMixin):
         self.passage = passage
         self.passage_text = passage_to_text('\n'.join(self.lines[1:])) if not raw_passage else passage_to_text('\n'.join(raw_passage.split('\n')[1:]))
         self.title = title if title else get_title(self.lines)
+        # self.title_text = title_to_text(title, remove_tag=True)
         self.parent = parent
         self._links = None
         self.narrative_elements = self._extract_narrative_elements()
@@ -84,8 +85,8 @@ class ContextualTweeTree(NodeMixin):
         Add children to a twee tree by recursively iterating over the links in each twee passage,
         keeping track of the context you've seen before.
         :param node: the current root node to expand
-        :param context: the context (including the parent)
         :param passage_dict: a mapping from link (title text) to passage
+        :param visited: a dict mapping link -> a bool of whether its been visited. should have been a set of
         """
         for link in node.get_links():
             if visited[link]:
@@ -101,7 +102,7 @@ class ContextualTweeTree(NodeMixin):
 
 
 if __name__ == '__main__':
-    # TODO need to check whether name [1] should link to name or not
+    # TODO need to check whether 'name [1]' should link to 'name' or not
     game = './generated_games/the_garden_3.tw'
     print(f'game {game}')
     with open(game) as f:

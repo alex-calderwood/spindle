@@ -8,8 +8,13 @@ import numpy as np
 
 PRONOUN_STOP_LIST = {'what', 'there', 'anything', 'nothing', 'it', 'something'}
 
+# Whether to force a BERT download
+REDOWNLOAD_BERT = False
+done = False
 
 def load_nlp_modules():
+    global done
+
     def _animate(text, finished='Loaded model.'):
         # ['|', '/', '-', '\\']
         spaces = ' ' * len(text)
@@ -29,8 +34,8 @@ def load_nlp_modules():
     t.start()
     os.environ["TOKENIZERS_PARALLELISM"] = "true"
     nlp = spacy.load('en_core_web_lg')
-    tokenizer = AutoTokenizer.from_pretrained("./dslim/bert-base-NER")
-    model = AutoModelForTokenClassification.from_pretrained("./dslim/bert-base-NER")
+    tokenizer = AutoTokenizer.from_pretrained("./dslim/bert-base-NER", force_download=REDOWNLOAD_BERT)
+    model = AutoModelForTokenClassification.from_pretrained("./dslim/bert-base-NER", force_download=REDOWNLOAD_BERT)
     ner_pipline = pipeline("ner", model=model, tokenizer=tokenizer)
     done = True
     t.join()
