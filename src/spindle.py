@@ -1,31 +1,33 @@
 import os, re
 import twee_utils as utils
 from display import make_selection, clear, italic, bold, italic_start, italic_end
-from external_model import get_completion
-from contextual_tree import ContextualTweeTree
+from external_model import TwineGenerator
+from contextual_tree import PassageTree
+from analysis import write_context_text
 
-spinning = ['\\', '|', '/', '-']
-
-verbose = False
+VERBOSE = False
 
 MAX_GEN_COUNT = 16
 
-data_dir = './generated_games/'
+DATA_DIR = './generated_games/'
 TWEE_DIRS = ['../twee/', './twee/']
 
+# Construct a contextual GPT-3 engine
+generator = TwineGenerator("context")
 
-def generate(original_title):
+
+def generate(original_title, context=''):
     print('generating for title: ' + original_title)
 
     title_to_save = utils.make_title(original_title, process=False)  # readable by twee
     processed_title = utils.make_title(original_title, process=True)  # ready for GPT-3
-    prompt = utils.make_prompt(processed_title)
+    prompt = utils.make_prompt(processed_title, context=context)
 
-    if verbose:
+    if VERBOSE:
         print(f'title {processed_title}')
         print(f'prompt {prompt}')
 
-    completion = get_completion(prompt)
+    completion = generator.call_model(prompt)
 
     # Process the generated completion back into plain twee
     twee_passage = title_to_save + '\n' + utils.gen_to_twee_format_3(completion)
@@ -99,7 +101,7 @@ def retrospective(raw_passage, passages, title, links_to_do, links_done, link_to
         links_to_do = utils.dedupe_in_order(links_to_do, links_done)
 
         parent = link_to_parent[title]
-        node = ContextualTweeTree(
+        node = PassageTree(
             passage,
             raw_passage=raw_passage,
             title=utils.make_title(title),
@@ -124,13 +126,13 @@ def make_and_run_twee(story_title, by, passages):
         twee += passage + "\n\n"
     twee = re.sub(r'::\s+start', ':: Start', twee)
 
-    filename = os.path.join(data_dir, 'my_story.tw')
+    filename = os.path.join(DATA_DIR, 'my_story.tw')
     with open(filename, 'w') as f:
         f.write(twee)
     print(f'Wrote twee to {filename}')
 
     html_file = os.path.basename(filename).split('.')[0] + '.html'
-    html_file = os.path.join(data_dir, html_file)
+    html_file = os.path.join(DATA_DIR, html_file)
 
     did_twee, did_open = False, False
     for t in TWEE_DIRS:
@@ -139,7 +141,7 @@ def make_and_run_twee(story_title, by, passages):
             with open(html_file, 'wb') as f:
                 f.write(twee)
                 print(f"Wrote game to {html_file}")
-                did_twee
+                did_twee = True
         except Exception as e:
             print(f"Unable to Twee {filename} {e}")
 
@@ -150,6 +152,13 @@ def make_and_run_twee(story_title, by, passages):
             print(f"Unable to open {html_file} {e}")
         if did_twee and did_open:
             continue
+
+
+def make_context_for_interaction(passage_title, link_to_parent):
+    parent = link_to_parent[passage_title]
+    context_components = PassageTree.construct_context(parent)
+    context = write_context_text(context_components)
+    return context
 
 
 def interactive():
@@ -178,10 +187,11 @@ def interactive():
             links_to_do.remove(passage_title)
 
         command = get_command(passage_title)
+        context = make_context_for_interaction(passage_title, link_to_parent)
 
         # Single title commands
         if command == 'g':
-            passage = generate(passage_title)
+            passage = generate(passage_title, context=context)
             print(f'completed passage: {italic(passage)} \n')
         elif command == 'w':
             clear(f'{bold(passage_title)}\n')
@@ -215,7 +225,8 @@ def generate_all(passages, passage_title, links_to_do, links_done, link_to_paren
     links_to_do.append(passage_title)  # We've already popped one but we want to generate it too
     while links_to_do and num_generated < MAX_GEN_COUNT:
         passage_title = links_to_do.pop(0)
-        passage = generate(passage_title)
+        context = make_context_for_interaction(passage_title, link_to_parent)
+        passage = generate(passage_title, context=context)
         _, passages, links_to_do, links_done, link_to_parent = retrospective(
             passage, passages, passage_title, links_to_do, links_done, link_to_parent
         )

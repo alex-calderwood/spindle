@@ -4,13 +4,13 @@ from collections import defaultdict, Counter
 import threading, time, sys, itertools, random, os
 import spacy
 from twee_utils import dedupe_in_order
-import numpy as np
 
 PRONOUN_STOP_LIST = {'what', 'there', 'anything', 'nothing', 'it', 'something'}
 
 # Whether to force a BERT download
 REDOWNLOAD_BERT = False
 done = False
+
 
 def load_nlp_modules():
     global done

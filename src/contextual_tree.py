@@ -5,8 +5,7 @@ from twee_utils import *
 from analysis import make_context_components, write_context_text
 
 
-class ContextualTweeTree(NodeMixin):
-    # TODO need to turn it into a tree
+class PassageTree(NodeMixin):
     # AnyTree Docs: https://anytree.readthedocs.io/en/2.8.0/
     def __init__(self, passage, title=None, parent=None, raw_passage=None, compute_context=True):
         """
@@ -22,12 +21,12 @@ class ContextualTweeTree(NodeMixin):
         self._links = None
         self.narrative_elements = self._extract_narrative_elements()
         # the context is all relevant story details along the path from the root to the current node
-        self.full_context = (parent.full_context + [parent.narrative_elements]) if (parent and compute_context) else []
+        self.full_context = self.construct_context(parent) if (parent and compute_context) else []
         self.context_text = write_context_text(self.full_context)
         self.name = self.title  #+ ': ' + str(self.context_text)  # + " context: " + str(self.context)
 
     def __str__(self):
-        return f'<ContextualTweeTree {self.name}>'
+        return f'<PassageTree {self.name}>'
 
     def render(self):
         print(RenderTree(self).by_attr('name'))
@@ -54,6 +53,18 @@ class ContextualTweeTree(NodeMixin):
         return make_context_components(self.passage_text)
 
     @staticmethod
+    def construct_context(parent):
+        """
+        Returns a list of context components / narrative elements.
+        Each are dictionaries of the form:
+            {narrative element type: value ...}
+        """
+        if parent is None:
+            return []
+
+        return parent.full_context + [parent.narrative_elements]
+
+    @staticmethod
     def create(twee=None, passages=None):
         """
         Create a contextual tree from some twee passages.
@@ -74,8 +85,8 @@ class ContextualTweeTree(NodeMixin):
         passage_dict = make_passage_dict(passages)
 
         # Create a contextual tree
-        root = ContextualTweeTree(start)
-        ContextualTweeTree._traverse_and_create_context(root, passage_dict, defaultdict(bool))
+        root = PassageTree(start)
+        PassageTree._traverse_and_create_context(root, passage_dict, defaultdict(bool))
         return root, passage_dict
 
     @staticmethod
@@ -94,9 +105,9 @@ class ContextualTweeTree(NodeMixin):
             passage = passage_dict.get(link)
             if passage:
                 # create the child and add it to the parent
-                child_node = ContextualTweeTree(passage, title=make_title(link), parent=node)
+                child_node = PassageTree(passage, title=make_title(link), parent=node)
                 visited[link] = True
-                ContextualTweeTree._traverse_and_create_context(child_node, passage_dict, visited)
+                PassageTree._traverse_and_create_context(child_node, passage_dict, visited)
             else:
                 print(f"passage {link} does not exist")
 
@@ -108,8 +119,7 @@ if __name__ == '__main__':
     with open(game) as f:
         twee_str = f.read()
         print(f'tree for {game}:')
-        tree, _ = ContextualTweeTree.create(twee=twee_str)
-        # dot = DotExporter(tree, nodenamefunc=lambda n: f'{n.name} context {n.context}')
+        tree, _ = PassageTree.create(twee=twee_str)
         dot = DotExporter(tree, nodenamefunc=lambda n: f'{n.name}')
         dot.to_picture("./tree.png")
         tree.render()
