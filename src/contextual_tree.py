@@ -2,7 +2,7 @@ from collections import defaultdict
 from anytree import RenderTree, NodeMixin
 from anytree.exporter import DotExporter
 from twee_utils import *
-from twee_analytics import make_context_components, write_context_text
+from narrative_reader import make_context_components, write_context_text
 
 
 class PassageTree(NodeMixin):

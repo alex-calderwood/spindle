@@ -307,8 +307,8 @@ def title_to_text(title, remove_tag=False):
 
 def passage_to_text(passage):
 	"""
-	Similar to get_links,
-	TODO reuse some code between the two
+	Given a twee passage (without the title), return just the cleaned text, devoid of link markers '[' and <<choice>> macros.txt
+	TODO reuse some code between this and get_links.
 	"""
 	# Can't figure out way to do this in one line, but I think its possible, and would be faster
 	new_passage, subs = re.subn(r'\[\[([^\|]*?)]]', r'\1', passage)

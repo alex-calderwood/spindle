@@ -18,11 +18,12 @@ class TwineGenerator:
         Each will return a passage body that can be appended to the title to make a complete Twee passage.
         """
         # Decide which generator to use (GPT-3 or mock)
-        model = model.lower()
+        self.model = model.lower()
+
         self.verbose = bool(verbose)
-        if model == 'context':
+        if self.model == 'context':
             self.call_model = TwineGenerator._call_contextual_model
-        elif model == 'mock':
+        elif self.model == 'mock':
             self.call_model = TwineGenerator._mock_generate
         else:
             self.call_model = TwineGenerator._call_naive_model

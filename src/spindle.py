@@ -3,7 +3,7 @@ import twee_utils as utils
 from display import make_selection, clear, italic, bold, italic_start, italic_end
 from external_model import TwineGenerator
 from contextual_tree import PassageTree
-from twee_analytics import write_context_text
+from narrative_reader import write_context_text
 
 VERBOSE = False
 

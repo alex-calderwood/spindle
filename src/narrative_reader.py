@@ -3,7 +3,7 @@ from transformers import pipeline
 from collections import defaultdict, Counter
 import threading, time, sys, itertools, random, os
 import spacy
-from twee_utils import dedupe_in_order
+from twee_utils import dedupe_in_order, passage_to_text, split_lines, unsplit_lines
 
 PRONOUN_STOP_LIST = {'what', 'there', 'anything', 'nothing', 'it', 'something'}
 
@@ -73,7 +73,7 @@ def ner(text, verbose=False):
 
     :rtype dict: eg
         {
-        "B-PER": ["Anna", "Alex"]
+        "PER": ["Anna", "Alex"]
         }
     """
     ner_results = ner_pipeline(text)
@@ -108,6 +108,7 @@ def ner(text, verbose=False):
     processed_entities = defaultdict(list)
     for e in entities:
         e_type = e['entity']
+        e_type = ''.join(e_type.split('-')[1:])
         text = e['word']
         processed_entities[e_type].append(text)
 
@@ -144,8 +145,8 @@ def flatten(t):
 
 def entity_context_component(entities):
 
-    characters = flatten([v for k, v in entities.items() if k.endswith('PER')])
-    locations = flatten([v for k, v in entities.items() if k.endswith('LOC')])
+    characters = flatten([v for k, v in entities.items() if k == 'PER'])
+    locations = flatten([v for k, v in entities.items() if k == 'LOC'])
 
     return character_context_component(characters) + " " + \
         loc_context_component(locations)
@@ -157,16 +158,11 @@ def write_all_named_context_components(entities):
     def simplify_entity_type(ent_type):
         # Some entity types can be combined
         new_ent = ent_type.replace('GPE', 'LOC')
-        # We need to know the current key and a simplified version of it
-        ent_simple = ent_type.split('-')
-        ent_simple = ent_simple[-1] if ent_simple else None
-        return new_ent, ent_simple
+        return new_ent
 
     for ent_type in entities.keys():
-        ent_type, ent_simple = simplify_entity_type(ent_type)
-        if not ent_simple:
-            raise RuntimeError(f'entity {ent_type} is invalid')
-        if ent_simple in TAG_TO_PLURAL_DESC.keys():
+        ent_type = simplify_entity_type(ent_type)
+        if ent_type in TAG_TO_PLURAL_DESC.keys():
             written_components.append(
                 write_named_context_component(entities[ent_type], ent_type)
             )
@@ -204,7 +200,7 @@ def pronouns_context_component(pronouns):
 
 def make_context_components(passage_text):
     return {
-        'v': 1.1,  # Context version (I expect to go through a few iterations)
+        'v': 1.2,  # Context version (I expect to go through a few iterations)
         'entities': ner(passage_text),
         'pronouns': parse(passage_text),
     }
@@ -268,3 +264,16 @@ def write_context_text(components):
         f = CONTEXT_COMPONENT_FUNC.get(k, DEFAULT_COMPONENT_FUNC)
         context_text += f(component) + " "
     return context_text
+
+
+if __name__ == '__main__':
+    passage = """
+:: her research
+ Lara was able to find out that the woman she saw had been killed on that same day, the day before the storm. The storm had apparently knocked out power for days, which had made it even harder to find out more about the victim.
+She also found out that the police (including Dr. Bradford) had closed the case, since the mysterious victim turned out to be a local celebrity.
+This lead her to believe that the murderer(s) were still in London, and she would need to be extra careful in the future.
+[[She returns her attention to the docks.|the docks]]"""
+    passage = unsplit_lines(split_lines(passage)[1:])
+    cleaned_passage_text = passage_to_text(passage)
+    context_components = make_context_components(cleaned_passage_text)
+    print(context_components)
