@@ -5,8 +5,11 @@ import threading, time, sys, itertools, random, os
 import spacy
 from twee_utils import dedupe_in_order, passage_to_text, split_lines, unsplit_lines
 
+EXTRACTION_VERSION = 1.2
+
 PRONOUN_STOP_LIST = {'what', 'there', 'anything', 'nothing', 'it', 'something'}
 
+# TODO  I should be using the BERT list not this one
 # see: https://github.com/explosion/spaCy/blob/master/spacy/glossary.py
 TAG_TO_PLURAL_DESC = {
      "CARDINAL": "numerals",
@@ -22,13 +25,16 @@ TAG_TO_PLURAL_DESC = {
      "ORDINAL": "ordinals",
      "ORG": "organizations",
      "PERCENT": "percentages",
-     "PERSON": "people",
+     "PER": "people",
      "PRODUCT": "products",
      "QUANTITY": "measurments",
      "TIME": "times",
      "WORK_OF_ART": "artworks",
      'PRON': 'pronouns',
 }
+
+# We always want to mention how many locations, people there are in the context, even if there are 0
+ENTS_TO_ALWAYS_INCLUDE = ['LOC', 'PERSON']
 
 # Whether to force a BERT download
 REDOWNLOAD_BERT = False
@@ -132,7 +138,7 @@ def parse(passage_text):
 #### --- Begin Author Functions --- ####
 ## Author functions take a list of context components and write text describing them, interpretable by a language model
 ## or human
-def ner_author(entities):
+def all_entities_author(entities):
     written_components = []
 
     def simplify_entity_type(ent_type):
@@ -140,14 +146,14 @@ def ner_author(entities):
         new_ent = ent_type.replace('GPE', 'LOC')
         return new_ent
 
-    for ent_type in entities.keys():
+    for ent_type in set(entities.keys()) | set(ENTS_TO_ALWAYS_INCLUDE):
         ent_type = simplify_entity_type(ent_type)
         if ent_type in TAG_TO_PLURAL_DESC.keys():
-            written_components.append(
-                write_named_context_component(entities[ent_type], ent_type)
-            )
+            entity_text, exists = write_named_context_component(entities.get(ent_type, {}), ent_type)
+            written_components.append(entity_text)
 
-    return written_components
+    text = " ".join(written_components)
+    return text
 
 
 def pronouns_author(pronouns):
@@ -196,10 +202,10 @@ def write_named_context_component(typed_entities, ent_type):
     entities_exist = bool(typed_entities)
     plural_type_desc = TAG_TO_PLURAL_DESC.get(ent_type)
     if not plural_type_desc:
-        raise RuntimeError(f'Entity type not found: {ent_type}')
+        print(f'Entity type not found: {ent_type}')
     plural_type_desc = plural_type_desc.title()
     formatted_entities = comma_sep(typed_entities) if entities_exist else 'None'
-    return f"Prior {plural_type_desc}: {formatted_entities}", entities_exist
+    return f"Prior {plural_type_desc}: {formatted_entities}.", entities_exist
 
 
 def make_context_components(passage_text):
@@ -207,32 +213,43 @@ def make_context_components(passage_text):
     :param passage_text: the text from a single passage
     :return: a dict containing all narrative elements in the passage
     """
-    return {
-        'v': 1.1,  # Context version (I expect to go through a few iterations)
-        'entities': ner(passage_text),
+    context_components = {
+        'v': EXTRACTION_VERSION,  # Context version (I expect to go through a few iterations)
         'pronouns': parse(passage_text),
+        'entities': ner(passage_text)
     }
 
+    # TODO it this way
+    # for k, v in ner(passage_text).items():
+    #     context_components['entity_' + k] = v
 
-def count_context_components(components, topk=8):
-    """
-    Turn a list of context components (dicts) into a single dict of the most relevant context components
+    return context_components
 
-    TODO: this is horrible and needs to be rewritten
+
+def count_context_components(full_context, topk=8):
     """
-    print('j', components)
-    if not components:
+    Takes a list of context components (dicts), each corresponding to all narrative elements in a passage.
+
+    Then, counts the occurrences of each element across all passages. Returns the most common narrative elements across
+    all passages, with their counts
+
+    :param full_context: a list, each item (a dict) corresponding to all the narrative elements in that passage
+    :returns: a dict of mapping narrative element type -> a counter
+    """
+    print('j', full_context)
+    if not full_context:
         return {}
 
     joined = {
         'pronouns': [],
         'entities': defaultdict(list),
     }
-    for cc in components:
+    for cc in full_context:
         print('cc', cc)
         joined['pronouns'] += cc['pronouns']
         for k, v in cc['entities'].items():
             joined['entities'][k] += v
+    print('joined', joined)
 
     counted = {
         'pronouns': Counter(joined['pronouns']),
@@ -240,6 +257,8 @@ def count_context_components(components, topk=8):
     }
     for ent_type, entities in joined['entities'].items():
         counted['entities'][ent_type] = Counter(entities)
+
+    print('counted', counted)
 
     top_context_components = {}
     top_context_components['pronouns'] = [p for p, count in counted['pronouns'].most_common(topk)]
@@ -254,8 +273,7 @@ def count_context_components(components, topk=8):
 
 # map from context component to a function that writes text specific to that component type
 CONTEXT_COMPONENT_AUTHOR_FUNC = {
-    # "entities": basic_entity_context_component,
-    "entities": basic_entity_author,
+    "entities": basic_entity_author if EXTRACTION_VERSION <= 1.1 else all_entities_author,
     "pronouns": pronouns_author,
     "summary": lambda x: x,
 }
@@ -276,6 +294,7 @@ def write_context_text(full_context):
 
     context_text = ""
     for k, component in top_context_components.items():
+        print('k', k)
         f = CONTEXT_COMPONENT_AUTHOR_FUNC.get(k, DEFAULT_COMPONENT_FUNC)
         context_text += f(component) + " "
     return context_text
