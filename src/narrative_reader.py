@@ -27,6 +27,7 @@ TAG_TO_PLURAL_DESC = {
      "QUANTITY": "measurments",
      "TIME": "times",
      "WORK_OF_ART": "artworks",
+     'PRON': 'pronouns',
 }
 
 # Whether to force a BERT download
@@ -128,31 +129,10 @@ def parse(passage_text):
     return dedupe_in_order(pronouns, dont_add=PRONOUN_STOP_LIST)
 
 
-def comma_sep(list_of):
-    if not list_of:
-        return ''
-    elif len(list_of) == 1:
-        return list_of[0]
-    elif len(list_of) == 2:
-        return list_of[0] + ' and ' + list_of[1]
-    else:
-        return ', '.join(list_of[:-1]) + ', and ' + list_of[-1]
-
-
-def flatten(t):
-    return [item for sublist in t for item in sublist]
-
-
-def entity_context_component(entities):
-
-    characters = flatten([v for k, v in entities.items() if k == 'PER'])
-    locations = flatten([v for k, v in entities.items() if k == 'LOC'])
-
-    return character_context_component(characters) + " " + \
-        loc_context_component(locations)
-
-
-def write_all_named_context_components(entities):
+#### --- Begin Author Functions --- ####
+## Author functions take a list of context components and write text describing them, interpretable by a language model
+## or human
+def ner_author(entities):
     written_components = []
 
     def simplify_entity_type(ent_type):
@@ -168,6 +148,42 @@ def write_all_named_context_components(entities):
             )
 
     return written_components
+
+
+def pronouns_author(pronouns):
+    return f"Pronouns referenced: {comma_sep(pronouns) if pronouns else 'None'}."
+
+
+def basic_entity_author(entities):
+    characters = flatten([v for k, v in entities.items() if k == 'PER'])
+    locations = flatten([v for k, v in entities.items() if k == 'LOC'])
+
+    return basic_character_author(characters) + " " + \
+           basic_loc_author(locations)
+
+
+def basic_character_author(characters):
+    return f"Previously mentioned characters: {comma_sep(characters) if characters else 'None'}."
+
+
+def basic_loc_author(locations):
+    return f"Prior locations: {comma_sep(locations) if locations else 'None'}."
+#### --- End Author Functions --- ####
+
+
+def comma_sep(list_of):
+    if not list_of:
+        return ''
+    elif len(list_of) == 1:
+        return list_of[0]
+    elif len(list_of) == 2:
+        return list_of[0] + ' and ' + list_of[1]
+    else:
+        return ', '.join(list_of[:-1]) + ', and ' + list_of[-1]
+
+
+def flatten(t):
+    return [item for sublist in t for item in sublist]
 
 
 def write_named_context_component(typed_entities, ent_type):
@@ -186,40 +202,34 @@ def write_named_context_component(typed_entities, ent_type):
     return f"Prior {plural_type_desc}: {formatted_entities}", entities_exist
 
 
-def character_context_component(characters):
-    return f"Previously mentioned characters: {comma_sep(characters) if characters else 'None'}."
-
-
-def loc_context_component(locations):
-    return f"Prior locations: {comma_sep(locations) if locations else 'None'}."
-
-
-def pronouns_context_component(pronouns):
-    return f"Pronouns referenced: {comma_sep(pronouns) if pronouns else 'None'}."
-
-
 def make_context_components(passage_text):
+    """
+    :param passage_text: the text from a single passage
+    :return: a dict containing all narrative elements in the passage
+    """
     return {
-        'v': 1.2,  # Context version (I expect to go through a few iterations)
+        'v': 1.1,  # Context version (I expect to go through a few iterations)
         'entities': ner(passage_text),
         'pronouns': parse(passage_text),
     }
 
 
-def join_context_components(context, topk=8):
+def count_context_components(components, topk=8):
     """
     Turn a list of context components (dicts) into a single dict of the most relevant context components
 
     TODO: this is horrible and needs to be rewritten
     """
-    if not context:
+    print('j', components)
+    if not components:
         return {}
 
     joined = {
         'pronouns': [],
         'entities': defaultdict(list),
     }
-    for cc in context:
+    for cc in components:
+        print('cc', cc)
         joined['pronouns'] += cc['pronouns']
         for k, v in cc['entities'].items():
             joined['entities'][k] += v
@@ -243,25 +253,30 @@ def join_context_components(context, topk=8):
 
 
 # map from context component to a function that writes text specific to that component type
-CONTEXT_COMPONENT_FUNC = {
-    "entities": entity_context_component,
-    "pronouns": pronouns_context_component,
+CONTEXT_COMPONENT_AUTHOR_FUNC = {
+    # "entities": basic_entity_context_component,
+    "entities": basic_entity_author,
+    "pronouns": pronouns_author,
     "summary": lambda x: x,
 }
 DEFAULT_COMPONENT_FUNC = lambda x: str(x)
 
 
-def write_context_text(components):
+def write_context_text(full_context):
     """
-    Turn a dict of context information into a paragraph of text describing the passage's context
+    Turn a list of narrative elements into a string describing the context.
+
+    :param full_context: a list, each item (a dict) corresponding to all the narrative elements in that passage
+    :rtype: str
     """
 
     # count up top components
-    top_context_components = join_context_components(components)
+    top_context_components = count_context_components(full_context)
+    print('top', top_context_components)
 
     context_text = ""
     for k, component in top_context_components.items():
-        f = CONTEXT_COMPONENT_FUNC.get(k, DEFAULT_COMPONENT_FUNC)
+        f = CONTEXT_COMPONENT_AUTHOR_FUNC.get(k, DEFAULT_COMPONENT_FUNC)
         context_text += f(component) + " "
     return context_text
 
@@ -275,5 +290,7 @@ This lead her to believe that the murderer(s) were still in London, and she woul
 [[She returns her attention to the docks.|the docks]]"""
     passage = unsplit_lines(split_lines(passage)[1:])
     cleaned_passage_text = passage_to_text(passage)
+    print("passage", cleaned_passage_text)
     context_components = make_context_components(cleaned_passage_text)
-    print(context_components)
+    print("context components", context_components)
+    print(write_context_text([context_components]))
