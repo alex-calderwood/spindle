@@ -12,29 +12,31 @@ PRONOUN_STOP_LIST = {'what', 'there', 'anything', 'nothing', 'it', 'something'}
 # TODO  I should be using the BERT list not this one
 # see: https://github.com/explosion/spaCy/blob/master/spacy/glossary.py
 TAG_TO_PLURAL_DESC = {
-     "CARDINAL": "numerals",
-     "DATE": "dates",
-     "EVENT": "named events",
-     "FAC": "facilities",
-     "GPE": "political bodies",  # think about combining with LOC
-     "LANGUAGE": "languages",
-     "LAW": "documents",
-     "LOC": "locations",
-     "MONEY": "monetary values",
-     "NORP": "nationalities",
-     "ORDINAL": "ordinals",
-     "ORG": "organizations",
-     "PERCENT": "percentages",
-     "PER": "people",
-     "PRODUCT": "products",
-     "QUANTITY": "measurments",
-     "TIME": "times",
-     "WORK_OF_ART": "artworks",
-     'PRON': 'pronouns',
+    "LOC": "locations",
+    "PER": "people",
+    "MISC": "other entities",
+
+    "CARDINAL": "numerals",
+    "DATE": "dates",
+    "EVENT": "named events",
+    "FAC": "facilities",
+    "GPE": "political bodies",
+    "LANGUAGE": "languages",
+    "LAW": "documents",
+    "MONEY": "monetary values",
+    "NORP": "nationalities",
+    "ORDINAL": "ordinals",
+    "ORG": "organizations",
+    "PERCENT": "percentages",
+    "PRODUCT": "products",
+    "QUANTITY": "measurments",
+    "TIME": "times",
+    "WORK_OF_ART": "artworks",
+    'PRON': 'pronouns',
 }
 
 # We always want to mention how many locations, people there are in the context, even if there are 0
-ENTS_TO_ALWAYS_INCLUDE = ['LOC', 'PERSON']
+ENTS_TO_ALWAYS_INCLUDE = ['LOC', 'PER']
 
 # Whether to force a BERT download
 REDOWNLOAD_BERT = False
@@ -92,8 +94,6 @@ def ner(text, verbose=False):
     entities = []
     prev_beg = {}
     for i, entity in enumerate(ner_results):
-        # print(prev_beg, entity)
-        # print(entity['word'], entity['entity'])
         if entity['entity'].startswith('B'):
             prev_beg = entity
             entities.append(prev_beg)
@@ -148,9 +148,8 @@ def all_entities_author(entities):
 
     for ent_type in set(entities.keys()) | set(ENTS_TO_ALWAYS_INCLUDE):
         ent_type = simplify_entity_type(ent_type)
-        if ent_type in TAG_TO_PLURAL_DESC.keys():
-            entity_text, exists = write_named_context_component(entities.get(ent_type, {}), ent_type)
-            written_components.append(entity_text)
+        entity_text, exists = write_named_context_component(entities.get(ent_type, {}), ent_type)
+        written_components.append(entity_text)
 
     text = " ".join(written_components)
     return text
@@ -202,10 +201,11 @@ def write_named_context_component(typed_entities, ent_type):
     entities_exist = bool(typed_entities)
     plural_type_desc = TAG_TO_PLURAL_DESC.get(ent_type)
     if not plural_type_desc:
-        print(f'Entity type not found: {ent_type}')
+        print(f'WARNING: Entity type not found: {ent_type}')
+        plural_type_desc = 'other'
     plural_type_desc = plural_type_desc.title()
     formatted_entities = comma_sep(typed_entities) if entities_exist else 'None'
-    return f"Prior {plural_type_desc}: {formatted_entities}.", entities_exist
+    return f"Mentioned {plural_type_desc}: {formatted_entities}.", entities_exist
 
 
 def make_context_components(passage_text):
@@ -236,7 +236,6 @@ def count_context_components(full_context, topk=8):
     :param full_context: a list, each item (a dict) corresponding to all the narrative elements in that passage
     :returns: a dict of mapping narrative element type -> a counter
     """
-    print('j', full_context)
     if not full_context:
         return {}
 
@@ -245,11 +244,9 @@ def count_context_components(full_context, topk=8):
         'entities': defaultdict(list),
     }
     for cc in full_context:
-        print('cc', cc)
         joined['pronouns'] += cc['pronouns']
         for k, v in cc['entities'].items():
             joined['entities'][k] += v
-    print('joined', joined)
 
     counted = {
         'pronouns': Counter(joined['pronouns']),
@@ -257,8 +254,6 @@ def count_context_components(full_context, topk=8):
     }
     for ent_type, entities in joined['entities'].items():
         counted['entities'][ent_type] = Counter(entities)
-
-    print('counted', counted)
 
     top_context_components = {}
     top_context_components['pronouns'] = [p for p, count in counted['pronouns'].most_common(topk)]
@@ -290,11 +285,9 @@ def write_context_text(full_context):
 
     # count up top components
     top_context_components = count_context_components(full_context)
-    print('top', top_context_components)
 
     context_text = ""
     for k, component in top_context_components.items():
-        print('k', k)
         f = CONTEXT_COMPONENT_AUTHOR_FUNC.get(k, DEFAULT_COMPONENT_FUNC)
         context_text += f(component) + " "
     return context_text
@@ -303,7 +296,7 @@ def write_context_text(full_context):
 if __name__ == '__main__':
     passage = """
 :: her research
- Lara was able to find out that the woman she saw had been killed on that same day, the day before the storm. The storm had apparently knocked out power for days, which had made it even harder to find out more about the victim.
+ Lara was able to find out that the woman she saw had been killed on that same day, the day before the storm. Hurricane Sandy had apparently knocked out power for days, which had made it even harder to find out more about the victim.
 She also found out that the police (including Dr. Bradford) had closed the case, since the mysterious victim turned out to be a local celebrity.
 This lead her to believe that the murderer(s) were still in London, and she would need to be extra careful in the future.
 [[She returns her attention to the docks.|the docks]]"""
