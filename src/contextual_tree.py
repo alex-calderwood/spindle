@@ -1,8 +1,8 @@
 from collections import defaultdict
-from anytree import Node, RenderTree, NodeMixin
+from anytree import RenderTree, NodeMixin
 from anytree.exporter import DotExporter
 from twee_utils import *
-from analysis import make_context_components, write_context_text
+from twee_analytics import make_context_components, write_context_text
 
 
 class PassageTree(NodeMixin):
@@ -14,7 +14,7 @@ class PassageTree(NodeMixin):
         """
         self.lines = split_lines(passage)
         self.passage = passage
-        self.passage_text = passage_to_text('\n'.join(self.lines[1:])) if not raw_passage else passage_to_text('\n'.join(raw_passage.split('\n')[1:]))
+        self.cleaned_passage_text = passage_to_text('\n'.join(self.lines[1:])) if not raw_passage else passage_to_text('\n'.join(raw_passage.split('\n')[1:]))
         self.title = title if title else get_title(self.lines)
         # self.title_text = title_to_text(title, remove_tag=True)
         self.parent = parent
@@ -23,7 +23,7 @@ class PassageTree(NodeMixin):
         # the context is all relevant story details along the path from the root to the current node
         self.full_context = self.construct_context(parent) if (parent and compute_context) else []
         self.context_text = write_context_text(self.full_context)
-        self.name = self.title  #+ ': ' + str(self.context_text)  # + " context: " + str(self.context)
+        self.name = self.title  # + ': ' + str(self.context_text)  # + " context: " + str(self.context)
 
     def __str__(self):
         return f'<PassageTree {self.name}>'
@@ -50,7 +50,7 @@ class PassageTree(NodeMixin):
         """
         Run the NLP pipeline to extract from the current passage, all interesting story items.
         """
-        return make_context_components(self.passage_text)
+        return make_context_components(self.cleaned_passage_text)
 
     @staticmethod
     def construct_context(parent):

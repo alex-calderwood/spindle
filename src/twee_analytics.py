@@ -7,20 +7,42 @@ from twee_utils import dedupe_in_order
 
 PRONOUN_STOP_LIST = {'what', 'there', 'anything', 'nothing', 'it', 'something'}
 
+# see: https://github.com/explosion/spaCy/blob/master/spacy/glossary.py
+TAG_TO_PLURAL_DESC = {
+     "CARDINAL": "numerals",
+     "DATE": "dates",
+     "EVENT": "named events",
+     "FAC": "facilities",
+     "GPE": "political bodies",  # think about combining with LOC
+     "LANGUAGE": "languages",
+     "LAW": "documents",
+     "LOC": "locations",
+     "MONEY": "monetary values",
+     "NORP": "nationalities",
+     "ORDINAL": "ordinals",
+     "ORG": "organizations",
+     "PERCENT": "percentages",
+     "PERSON": "people",
+     "PRODUCT": "products",
+     "QUANTITY": "measurments",
+     "TIME": "times",
+     "WORK_OF_ART": "artworks",
+}
+
 # Whether to force a BERT download
 REDOWNLOAD_BERT = False
-done = False
+DONE = False
 
 
 def load_nlp_modules():
-    global done
+    global DONE
 
-    def _animate(text, finished='Loaded model.'):
+    def _animate(animate_text, finished='Loaded model.'):
         # ['|', '/', '-', '\\']
-        spaces = ' ' * len(text)
-        text_all = [text[:i + 1] for i in range(len(text))]
+        spaces = ' ' * len(animate_text)
+        text_all = [animate_text[:i + 1] for i in range(len(animate_text))]
         for c in itertools.cycle(text_all):  # ['.   ', '..  ', '... ', '....']
-            if done:
+            if DONE:
                 break
             # sys.stdout.write(f'\r{text}' + c)
             sys.stdout.write(f'-{c}                                          \r')
@@ -29,17 +51,17 @@ def load_nlp_modules():
         sys.stdout.write(f'\r{finished}                                         \r')
 
     text = 'Loading English... Reticulating Splines... etc...'
-    done = False
+    DONE = False
     t = threading.Thread(target=_animate, args=(text,))
     t.start()
     os.environ["TOKENIZERS_PARALLELISM"] = "true"
     nlp = spacy.load('en_core_web_lg')
     tokenizer = AutoTokenizer.from_pretrained("./dslim/bert-base-NER", force_download=REDOWNLOAD_BERT)
     model = AutoModelForTokenClassification.from_pretrained("./dslim/bert-base-NER", force_download=REDOWNLOAD_BERT)
-    ner_pipline = pipeline("ner", model=model, tokenizer=tokenizer)
-    done = True
+    ner_pipeline = pipeline("ner", model=model, tokenizer=tokenizer)
+    DONE = True
     t.join()
-    return ner_pipline, nlp
+    return ner_pipeline, nlp
 
 
 ner_pipeline, nlp = load_nlp_modules()
@@ -116,15 +138,56 @@ def comma_sep(list_of):
         return ', '.join(list_of[:-1]) + ', and ' + list_of[-1]
 
 
+def flatten(t):
+    return [item for sublist in t for item in sublist]
+
+
 def entity_context_component(entities):
-    def flatten(t):
-        return [item for sublist in t for item in sublist]
 
     characters = flatten([v for k, v in entities.items() if k.endswith('PER')])
     locations = flatten([v for k, v in entities.items() if k.endswith('LOC')])
 
     return character_context_component(characters) + " " + \
         loc_context_component(locations)
+
+
+def write_all_named_context_components(entities):
+    written_components = []
+
+    def simplify_entity_type(ent_type):
+        # Some entity types can be combined
+        new_ent = ent_type.replace('GPE', 'LOC')
+        # We need to know the current key and a simplified version of it
+        ent_simple = ent_type.split('-')
+        ent_simple = ent_simple[-1] if ent_simple else None
+        return new_ent, ent_simple
+
+    for ent_type in entities.keys():
+        ent_type, ent_simple = simplify_entity_type(ent_type)
+        if not ent_simple:
+            raise RuntimeError(f'entity {ent_type} is invalid')
+        if ent_simple in TAG_TO_PLURAL_DESC.keys():
+            written_components.append(
+                write_named_context_component(entities[ent_type], ent_type)
+            )
+
+    return written_components
+
+
+def write_named_context_component(typed_entities, ent_type):
+    """
+    Given a list of entities (and their counts), return a string that explains them to the model.
+
+    :return: (named entity description, entities exist)
+    :rtype: (str, bool)
+    """
+    entities_exist = bool(typed_entities)
+    plural_type_desc = TAG_TO_PLURAL_DESC.get(ent_type)
+    if not plural_type_desc:
+        raise RuntimeError(f'Entity type not found: {ent_type}')
+    plural_type_desc = plural_type_desc.title()
+    formatted_entities = comma_sep(typed_entities) if entities_exist else 'None'
+    return f"Prior {plural_type_desc}: {formatted_entities}", entities_exist
 
 
 def character_context_component(characters):

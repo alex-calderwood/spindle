@@ -3,7 +3,7 @@ import twee_utils as utils
 from display import make_selection, clear, italic, bold, italic_start, italic_end
 from external_model import TwineGenerator
 from contextual_tree import PassageTree
-from analysis import write_context_text
+from twee_analytics import write_context_text
 
 VERBOSE = False
 
@@ -206,7 +206,7 @@ def interactive():
             passages, links_to_do, links_done, link_to_parent = generate_all(passages, passage_title, links_to_do, links_done, link_to_parent)
             continue
         elif command == 'q':
-            passages, links_to_do, links_done, link_to_parent = done(passages, passage_title, links_to_do, links_done, link_to_parent)
+            passages, links_to_do, links_done, link_to_parent = DONE(passages, passage_title, links_to_do, links_done, link_to_parent)
             continue
         else:
             raise NotImplemented(f"No command {command}. How did you get here?")

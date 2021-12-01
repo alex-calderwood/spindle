@@ -7,7 +7,7 @@ import shutil
 import random
 import strbalance
 
-num_re = r'\[([0-9]+.?[0-9]*)\]'
+num_re = r'\[([0-9]+.?END[0-9]*)\]'
 
 image_postfix = '[Twine.image]'
 
