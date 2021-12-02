@@ -9,30 +9,38 @@ EXTRACTION_VERSION = 1.2
 
 PRONOUN_STOP_LIST = {'what', 'there', 'anything', 'nothing', 'it', 'something'}
 
-# TODO  I should be using the BERT list not this one
-# see: https://github.com/explosion/spaCy/blob/master/spacy/glossary.py
+# BERT NER LIST
+# O Outside of a named entity
+# B-MIS	Beginning of a miscellaneous entity right after another miscellaneous entity
+# I-MIS	Miscellaneous entity
+# B-PER	Beginning of a person’s name right after another person’s name
+# I-PER	Person’s name
+# B-ORG	Beginning of an organization right after another organization
+# I-ORG	organization
+# B-LOC	Beginning of a location right after another location
+# I-LOC	Location
 TAG_TO_PLURAL_DESC = {
     "LOC": "locations",
     "PER": "people",
     "MISC": "other entities",
-
-    "CARDINAL": "numerals",
-    "DATE": "dates",
-    "EVENT": "named events",
-    "FAC": "facilities",
-    "GPE": "political bodies",
-    "LANGUAGE": "languages",
-    "LAW": "documents",
-    "MONEY": "monetary values",
-    "NORP": "nationalities",
-    "ORDINAL": "ordinals",
     "ORG": "organizations",
-    "PERCENT": "percentages",
-    "PRODUCT": "products",
-    "QUANTITY": "measurments",
-    "TIME": "times",
-    "WORK_OF_ART": "artworks",
-    'PRON': 'pronouns',
+    # SPACY NER LIST https://github.com/explosion/spaCy/blob/master/spacy/glossary.py
+    # "CARDINAL": "numerals",
+    # "DATE": "dates",
+    # "EVENT": "named events",
+    # "FAC": "facilities",
+    # "GPE": "political bodies",
+    # "LANGUAGE": "languages",
+    # "LAW": "documents",
+    # "MONEY": "monetary values",
+    # "NORP": "nationalities",
+    # "ORDINAL": "ordinals",
+    # "PERCENT": "percentages",
+    # "PRODUCT": "products",
+    # "QUANTITY": "measurments",
+    # "TIME": "times",
+    # "WORK_OF_ART": "artworks",
+    # 'PRON': 'pronouns',
 }
 
 # We always want to mention how many locations, people there are in the context, even if there are 0
@@ -41,6 +49,11 @@ ENTS_TO_ALWAYS_INCLUDE = ['LOC', 'PER']
 # Whether to force a BERT download
 REDOWNLOAD_BERT = False
 DONE = False
+
+
+def set_extraction_version(v):
+    global EXTRACTION_VERSION
+    EXTRACTION_VERSION = v
 
 
 def load_nlp_modules():
@@ -294,12 +307,19 @@ def write_context_text(full_context):
 
 
 if __name__ == '__main__':
-    passage = """
-:: her research
- Lara was able to find out that the woman she saw had been killed on that same day, the day before the storm. Hurricane Sandy had apparently knocked out power for days, which had made it even harder to find out more about the victim.
+    passage = [
+        """:: her research
+Lara was able to find out that the woman she saw had been killed on that same day, the day before the storm. Hurricane Sandy had apparently knocked out power for days, which had made it even harder to find out more about the victim.
 She also found out that the police (including Dr. Bradford) had closed the case, since the mysterious victim turned out to be a local celebrity.
-This lead her to believe that the murderer(s) were still in London, and she would need to be extra careful in the future.
-[[She returns her attention to the docks.|the docks]]"""
+This lead her to believe that the murderer(s) were still in London, and she would need to be extra careful in the future. 
+[[She returns her attention to the docks.|the docks]]""",
+        """:: her research
+        Lara was able to find out that the woman she saw had been killed on that same day, the day before the storm. Hurricane Sandy had apparently knocked out power for days, which had made it even harder to find out more about the victim.
+        She also found out that the police (including Dr. Bradford) had closed the case, since the mysterious victim turned out to be a local celebrity.
+        This lead her to believe that the murderer(s) were still in London, and she would need to be extra careful in the future. 
+        [[She returns her attention to the docks.|the docks]]"""
+                ]
+
     passage = unsplit_lines(split_lines(passage)[1:])
     cleaned_passage_text = passage_to_text(passage)
     print("passage", cleaned_passage_text)

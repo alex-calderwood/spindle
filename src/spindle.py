@@ -3,7 +3,7 @@ import twee_utils as utils
 from display import make_selection, clear, italic, bold, italic_start, italic_end
 from external_model import TwineGenerator
 from contextual_tree import PassageTree
-from narrative_reader import write_context_text
+from narrative_reader import write_context_text, set_extraction_version
 
 VERBOSE = False
 
@@ -14,6 +14,7 @@ TWEE_DIRS = ['../twee/', './twee/']
 
 # Construct a contextual GPT-3 engine
 generator = TwineGenerator("context")
+set_extraction_version(1.1)
 
 
 def generate(original_title, context=''):
