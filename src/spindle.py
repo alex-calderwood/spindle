@@ -7,16 +7,26 @@ from narrative_reader import write_context_text, set_extraction_version
 
 VERBOSE = True
 
-MAX_GEN_COUNT = 16
+GEN_COUNT = 16
+DEFAULT_GEN_COUNT = 16
 
 DATA_DIR = './generated_games/'
 TWEE_DIRS = ['../twee/', './twee/']
 
+PRESET_CONFIGS = [
+    # (twine generator, narrative element version, use_context)
+    ("context", 1.3, True),  # 0 - All NER elements, pronouns, bulleted events
+    ("context", 1.2, True),  # 1 - LOC and PER NER elements, pronouns
+    ("naive", 1.1, False),   # 2 - no context
+]
+# Select your configuration by changing this number
+CONFIG = PRESET_CONFIGS[0]
+
 # Construct a contextual GPT-3 engine
-generator = TwineGenerator("context")
+generator = TwineGenerator(CONFIG[0])
 # Decide which version of narrative extraction to use
-set_extraction_version(1.3)
-USE_CONTEXT = True
+set_extraction_version(CONFIG[1])
+USE_CONTEXT = CONFIG[2]
 
 
 def generate(original_title, context=''):
@@ -38,9 +48,10 @@ def generate(original_title, context=''):
 
 
 def get_command(title):
-    do_gen = 'starting'
-    while not do_gen or do_gen not in 'wgvfq':
-        do_gen = input(
+    cmd = 'starting'
+    args = []
+    while not cmd or cmd not in 'wgvfq':
+        user_in = input(
             f'(w) to write {italic(title)} yourself\n'
             f'(g) to generate {italic(title)}\n'
             f'(v) to view the written passages.\n'
@@ -48,7 +59,12 @@ def get_command(title):
             f'(q) to terminate writing with unwritten passages.\n'
             f'(W/g/f/v/q): '
         ).lower()
-    return do_gen
+
+        split = user_in.split()
+        cmd = split[0] if split else 'nope'
+        args = split[1:] if split else []
+
+    return cmd, args
 
 
 def select_passage(passages_todo):
@@ -129,7 +145,8 @@ def make_and_run_twee(story_title, by, passages):
         twee += passage + "\n\n"
     twee = re.sub(r'::\s+start', ':: Start', twee)
 
-    filename = os.path.join(DATA_DIR, 'my_story.tw')
+    file_base = story_title.replace(' ', '_')
+    filename = os.path.join(DATA_DIR, f'{file_base}.tw')
     with open(filename, 'w') as f:
         f.write(twee)
     print(f'Wrote twee to {filename}')
@@ -189,7 +206,7 @@ def interactive():
             passage_title = select_passage(links_to_do)
             links_to_do.remove(passage_title)
 
-        command = get_command(passage_title)
+        command, args = get_command(passage_title)
         context = make_context_for_interaction(passage_title, link_to_parent)
 
         # Single title commands
@@ -206,7 +223,11 @@ def interactive():
             input('continue')
             continue
         elif command == 'f':
-            passages, links_to_do, links_done, link_to_parent = generate_all(passages, passage_title, links_to_do, links_done, link_to_parent)
+            gen_num = parse_gen_num(args)
+            if gen_num is None:
+                gen_num = len(links_to_do)
+            print('gen', gen_num)
+            passages, links_to_do, links_done, link_to_parent = generate_n(passages, passage_title, links_to_do, links_done, link_to_parent, n=gen_num)
             continue
         elif command == 'q':
             passages, links_to_do, links_done, link_to_parent = done(passages, passage_title, links_to_do, links_done, link_to_parent)
@@ -223,10 +244,13 @@ def interactive():
     make_and_run_twee(story_title, by, passages)
 
 
-def generate_all(passages, passage_title, links_to_do, links_done, link_to_parent):
+def generate_n(passages, passage_title, links_to_do, links_done, link_to_parent, n=DEFAULT_GEN_COUNT):
+    """
+    Generate n passages using the defined generator.
+    """
     num_generated = 0
     links_to_do.append(passage_title)  # We've already popped one but we want to generate it too
-    while links_to_do and num_generated < MAX_GEN_COUNT:
+    while links_to_do and num_generated < n:
         passage_title = links_to_do.pop(0)
         context = make_context_for_interaction(passage_title, link_to_parent)
         passage = generate(passage_title, context=context)
@@ -234,7 +258,7 @@ def generate_all(passages, passage_title, links_to_do, links_done, link_to_paren
             passage, passages, passage_title, links_to_do, links_done, link_to_parent, compute_context=USE_CONTEXT,
         )
         num_generated += 1
-    hit_max = f'(hit maximum of {MAX_GEN_COUNT})' if num_generated == MAX_GEN_COUNT else ''
+    hit_max = f'(hit maximum of {n})' if num_generated == n else ''
     input(f"done generating {num_generated} passages {hit_max}")
     return passages, links_to_do, links_done, link_to_parent
 
@@ -256,6 +280,15 @@ def display_passages(passages):
             print(f'{p}\n')
     else:
         print('No passages written yet.')
+
+
+def parse_gen_num(args):
+    if not args:
+        return None
+    try:
+        return int(args[0])
+    except ValueError as e:
+        return None
 
 
 if __name__ == '__main__':
