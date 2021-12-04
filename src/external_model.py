@@ -25,8 +25,10 @@ class TwineGenerator:
             self._call_model = TwineGenerator._call_contextual_model
         elif self.model == 'mock':
             self._call_model = TwineGenerator._mock_generate
-        else:
+        elif self.model == 'naive':
             self._call_model = TwineGenerator._call_naive_model
+        else:
+            raise ValueError(f"TwineGenerator({self.model}) is invalid")
 
     def get_completion(self, prompt):
         """

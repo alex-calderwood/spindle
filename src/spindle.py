@@ -5,7 +5,7 @@ from external_model import TwineGenerator
 from contextual_tree import PassageTree
 from narrative_reader import write_context_text, set_extraction_version
 
-VERBOSE = False
+VERBOSE = True
 
 MAX_GEN_COUNT = 16
 
@@ -14,7 +14,9 @@ TWEE_DIRS = ['../twee/', './twee/']
 
 # Construct a contextual GPT-3 engine
 generator = TwineGenerator("context")
-set_extraction_version(1.2)
+# Decide which version of narrative extraction to use
+set_extraction_version(1.3)
+USE_CONTEXT = True
 
 
 def generate(original_title, context=''):
@@ -214,7 +216,7 @@ def interactive():
 
         # If we get to this point, we assume we've selected a passage
         passage, passages, links_to_do, links_done, link_to_parent = retrospective(
-            passage, passages, passage_title, links_to_do, links_done, link_to_parent
+            passage, passages, passage_title, links_to_do, links_done, link_to_parent, compute_context=USE_CONTEXT
         )
 
     print('Done!')
@@ -229,7 +231,7 @@ def generate_all(passages, passage_title, links_to_do, links_done, link_to_paren
         context = make_context_for_interaction(passage_title, link_to_parent)
         passage = generate(passage_title, context=context)
         _, passages, links_to_do, links_done, link_to_parent = retrospective(
-            passage, passages, passage_title, links_to_do, links_done, link_to_parent
+            passage, passages, passage_title, links_to_do, links_done, link_to_parent, compute_context=USE_CONTEXT,
         )
         num_generated += 1
     hit_max = f'(hit maximum of {MAX_GEN_COUNT})' if num_generated == MAX_GEN_COUNT else ''

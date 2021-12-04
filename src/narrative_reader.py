@@ -53,6 +53,7 @@ DONE = False
 
 def set_extraction_version(v):
     global EXTRACTION_VERSION
+    print(f"Narrative extraction set to v{v}")
     EXTRACTION_VERSION = v
 
 
