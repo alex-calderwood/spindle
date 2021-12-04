@@ -119,8 +119,34 @@ def test_ner_in_practice():
     ner(examples[-1])
 
 
-test_ner_in_practice()
+# test_ner_in_practice()
 
+
+def test_semantic_parse():
+    import spacy
+    import textacy
+    nlp = spacy.load('en_core_web_lg')
+
+    # https://stackoverflow.com/questions/56896753/is-there-a-way-to-get-entire-constituents-using-spacy
+    text = "Anna was mad at Alex."
+    doc = nlp(text)
+    # print(doc.text)
+    # for token in doc:
+    #     print(token.text, token.tag_, token.pos_, token.dep_, token.ent_type_, [a for a in token.subtree])
+
+    triples = [svo for svo in textacy.extract.subject_verb_object_triples(doc)]
+
+    def t(tokens, lemma=True):
+        # convert a list of tokens into text
+        return " ".join([x.lemma_ if lemma else x.text for x in tokens])
+
+    for subject, verb, object in triples:
+        s1 = subject[0]
+        print(type(s1))
+        print(s1.text, s1.lemma_)
+        print(f'{t(verb)}({t(subject, False)}, {t(object, False)})')
+
+test_semantic_parse()
 
 # from stanza.server import CoreNLPClient
 # stanza.download('en')

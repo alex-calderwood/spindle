@@ -14,7 +14,7 @@ TWEE_DIRS = ['../twee/', './twee/']
 
 # Construct a contextual GPT-3 engine
 generator = TwineGenerator("context")
-set_extraction_version(1.1)
+set_extraction_version(1.2)
 
 
 def generate(original_title, context=''):
@@ -28,7 +28,7 @@ def generate(original_title, context=''):
         print(f'title {processed_title}')
         print(f'prompt {prompt}')
 
-    completion = generator.call_model(prompt)
+    completion = generator.get_completion(prompt)
 
     # Process the generated completion back into plain twee
     twee_passage = title_to_save + '\n' + utils.gen_to_twee_format_3(completion)
@@ -207,7 +207,7 @@ def interactive():
             passages, links_to_do, links_done, link_to_parent = generate_all(passages, passage_title, links_to_do, links_done, link_to_parent)
             continue
         elif command == 'q':
-            passages, links_to_do, links_done, link_to_parent = DONE(passages, passage_title, links_to_do, links_done, link_to_parent)
+            passages, links_to_do, links_done, link_to_parent = done(passages, passage_title, links_to_do, links_done, link_to_parent)
             continue
         else:
             raise NotImplemented(f"No command {command}. How did you get here?")

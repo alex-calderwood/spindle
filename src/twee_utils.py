@@ -287,7 +287,7 @@ def make_title(passage_name, process=True, line_end=''):
 	return f':: {passage_name}{line_end}'
 
 
-@cached(cache={})  # cache passages that have already been split to reducce compute time
+@cached(cache={})  # cache passages that have already been split to reduce compute time
 def split_lines(passage):
 	return passage.split('\n')
 

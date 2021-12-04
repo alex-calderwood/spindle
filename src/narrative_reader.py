@@ -2,10 +2,10 @@ from transformers import AutoTokenizer, AutoModelForTokenClassification
 from transformers import pipeline
 from collections import defaultdict, Counter
 import threading, time, sys, itertools, random, os
-import spacy
+import spacy, textacy
 from twee_utils import dedupe_in_order, passage_to_text, split_lines, unsplit_lines
 
-EXTRACTION_VERSION = 1.2
+EXTRACTION_VERSION = 1.1
 
 PRONOUN_STOP_LIST = {'what', 'there', 'anything', 'nothing', 'it', 'something'}
 
@@ -138,14 +138,19 @@ def ner(text, verbose=False):
     return dict(processed_entities)
 
 
-def parse(passage_text):
-    doc = nlp(passage_text)
+def extract_pronouns(doc):
     pronouns = []
     for token in doc:
         if token.pos_ == 'PRON':
             pronouns.append(token.text.lower())
 
     return dedupe_in_order(pronouns, dont_add=PRONOUN_STOP_LIST)
+
+
+def extract_events(doc):
+    triples = [svo for svo in textacy.extract.subject_verb_object_triples(doc)]
+    print('trip', triples)
+    return triples
 
 
 #### --- Begin Author Functions --- ####
@@ -186,8 +191,37 @@ def basic_character_author(characters):
 
 def basic_loc_author(locations):
     return f"Prior locations: {comma_sep(locations) if locations else 'None'}."
+
+
+def predicates_author(triples):
+    """
+    Convert a textacy.extract.triples.SVOTriple to a predicate style string description.
+    """
+    text = ''
+    #  bomb(Donald Trump, panama)
+    for subject, verb, object in triples:
+        text += f'{t2s(verb)}({t2s(subject, False)}, {t2s(object, False)}) '
+    return text
+
+
+def list_triples_author(triples):
+    """
+    Convert a textacy.extract.triples.SVOTriple to a predicate style string description.
+    """
+    text = 'Preceding Events:\n'
+    if triples:
+        for subject, verb, object in triples:
+            text += f'* {t2s(subject, False)} {t2s(verb, False)} {t2s(object, False)}\n'
+    else:
+        text += 'None'
+    return text
+
 #### --- End Author Functions --- ####
 
+
+def t2s(tokens, lemma=True):
+    # convert a list of spacy tokens into text
+    return " ".join([x.lemma_.lower() if lemma else x.text.lower() for x in tokens])
 
 def comma_sep(list_of):
     if not list_of:
@@ -226,11 +260,17 @@ def make_context_components(passage_text):
     :param passage_text: the text from a single passage
     :return: a dict containing all narrative elements in the passage
     """
+
+    doc = nlp(passage_text)
+
     context_components = {
         'v': EXTRACTION_VERSION,  # Context version (I expect to go through a few iterations)
-        'pronouns': parse(passage_text),
-        'entities': ner(passage_text)
+        'pronouns': extract_pronouns(doc),
+        'entities': ner(passage_text),
     }
+
+    if EXTRACTION_VERSION >= 1.3:
+        context_components['events'] = extract_events(doc)
 
     # TODO it this way
     # for k, v in ner(passage_text).items():
@@ -239,7 +279,29 @@ def make_context_components(passage_text):
     return context_components
 
 
-def count_context_components(full_context, topk=8):
+def flatten_context(full_context):
+    """
+    Take a list of dicts, each representing the narrative elements in one passage, and return a single dict containing
+    all narrative elements across all passages.
+    """
+    joined = {
+        'pronouns': [],
+        'entities': defaultdict(list),
+    }
+    if EXTRACTION_VERSION >= 1.3:
+        joined['events'] = []
+
+    for passage_components in full_context:
+        joined['pronouns'] += passage_components['pronouns']
+        for k, v in passage_components['entities'].items():
+            joined['entities'][k] += v
+        if EXTRACTION_VERSION >= 1.3:
+            joined['events'] += passage_components['events']
+
+    return joined
+
+
+def trim_context_components(full_context, topk=8):
     """
     Takes a list of context components (dicts), each corresponding to all narrative elements in a passage.
 
@@ -247,25 +309,18 @@ def count_context_components(full_context, topk=8):
     all passages, with their counts
 
     :param full_context: a list, each item (a dict) corresponding to all the narrative elements in that passage
-    :returns: a dict of mapping narrative element type -> a counter
+    :returns: a dict of mapping narrative element type -> their counts (for counted elements) or the elements in order (for non-counted elements)
     """
     if not full_context:
         return {}
 
-    joined = {
-        'pronouns': [],
-        'entities': defaultdict(list),
-    }
-    for cc in full_context:
-        joined['pronouns'] += cc['pronouns']
-        for k, v in cc['entities'].items():
-            joined['entities'][k] += v
+    flattened = flatten_context(full_context)
 
     counted = {
-        'pronouns': Counter(joined['pronouns']),
+        'pronouns': Counter(flattened['pronouns']),
         'entities': {}
     }
-    for ent_type, entities in joined['entities'].items():
+    for ent_type, entities in flattened['entities'].items():
         counted['entities'][ent_type] = Counter(entities)
 
     top_context_components = {}
@@ -276,6 +331,9 @@ def count_context_components(full_context, topk=8):
     for ent_type, entities in top_context_components['entities'].items():
         top_context_components['entities'][ent_type] = [e for (e, count) in entities]
 
+    if EXTRACTION_VERSION >= 1.3:
+        top_context_components['events'] = flattened['events']
+
     return top_context_components
 
 
@@ -283,6 +341,7 @@ def count_context_components(full_context, topk=8):
 CONTEXT_COMPONENT_AUTHOR_FUNC = {
     "entities": basic_entity_author if EXTRACTION_VERSION <= 1.1 else all_entities_author,
     "pronouns": pronouns_author,
+    "events": list_triples_author,  # predicates_author,
     "summary": lambda x: x,
 }
 DEFAULT_COMPONENT_FUNC = lambda x: str(x)
@@ -297,7 +356,7 @@ def write_context_text(full_context):
     """
 
     # count up top components
-    top_context_components = count_context_components(full_context)
+    top_context_components = trim_context_components(full_context)
 
     context_text = ""
     for k, component in top_context_components.items():
@@ -317,8 +376,15 @@ This lead her to believe that the murderer(s) were still in London, and she woul
         Lara was able to find out that the woman she saw had been killed on that same day, the day before the storm. Hurricane Sandy had apparently knocked out power for days, which had made it even harder to find out more about the victim.
         She also found out that the police (including Dr. Bradford) had closed the case, since the mysterious victim turned out to be a local celebrity.
         This lead her to believe that the murderer(s) were still in London, and she would need to be extra careful in the future. 
-        [[She returns her attention to the docks.|the docks]]"""
-                ]
+        [[She returns her attention to the docks.|the docks]]""",
+        """:: her research
+        Lara was able to find out that the woman she saw had been killed on that same day, the day before the storm. Hurricane Sandy had apparently knocked out power for days, which had made it even harder to find out more about the victim.
+        She also found out that the police (including Dr. Bradford) had closed the case, since the mysterious victim turned out to be a local celebrity.
+        This lead her to believe that the murderer(s) were still in London, and she would need to be extra careful in the future. 
+        [[She returns her attention to the docks.|the docks]]""",
+        """:: her research
+        Anna sits in her bed and knits. Someone knocks on the window to say hi. They lock eyes. You observe all of this."""
+                ][-1]
 
     passage = unsplit_lines(split_lines(passage)[1:])
     cleaned_passage_text = passage_to_text(passage)

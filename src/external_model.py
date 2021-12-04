@@ -22,11 +22,11 @@ class TwineGenerator:
 
         self.verbose = bool(verbose)
         if self.model == 'context':
-            self.call_model = TwineGenerator._call_contextual_model
+            self._call_model = TwineGenerator._call_contextual_model
         elif self.model == 'mock':
-            self.call_model = TwineGenerator._mock_generate
+            self._call_model = TwineGenerator._mock_generate
         else:
-            self.call_model = TwineGenerator._call_naive_model
+            self._call_model = TwineGenerator._call_naive_model
 
     def get_completion(self, prompt):
         """
@@ -37,12 +37,12 @@ class TwineGenerator:
 
         while True:
             try:
-                return self.call_model(prompt)
+                return self._call_model(prompt)
             except openai.error.RateLimitError as e:
                 print(e)
                 print('retrying...')
 
-    def call_model(self, prompt):
+    def _call_model(self, prompt):
         raise RuntimeError("This should have been defined in the constructor")
 
     @staticmethod
