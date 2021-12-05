@@ -5,9 +5,7 @@ import threading, time, sys, itertools, random, os
 import spacy, textacy
 from twee_utils import dedupe_in_order, passage_to_text, split_lines, unsplit_lines
 
-EXTRACTION_VERSION = 1.1
-
-PRONOUN_STOP_LIST = {'what', 'there', 'anything', 'nothing', 'it', 'something'}
+PRONOUN_STOP_LIST = {'what', 'there', 'anything', 'nothing', 'it', 'something', 'everything', 'all', 'some'}
 
 # BERT NER LIST
 # O Outside of a named entity
@@ -49,12 +47,125 @@ ENTS_TO_ALWAYS_INCLUDE = ['LOC', 'PER']
 # Whether to force a BERT download
 REDOWNLOAD_BERT = False
 DONE = False
+MAX_EVENTS_LENGTH = 16
+DEFAULT_COMPONENT_FUNC = lambda x: str(x)
 
 
-def set_extraction_version(v):
-    global EXTRACTION_VERSION
-    print(f"Narrative extraction set to v{v}")
-    EXTRACTION_VERSION = v
+class Reader:
+    # AnyTree Docs: https://anytree.readthedocs.io/en/2.8.0/
+    def __init__(self, v):
+        self.set_extraction_version(v)
+        self.author_functions = self._get_author_functions(self.extraction_version)
+
+    def set_extraction_version(self, v):
+        assert(1.1 <= v <= 1.3)
+        print(f"Narrative extraction set to v{v}")
+        self.extraction_version = v
+
+    def _get_author_functions(self, extraction_version):
+        # map from context component to a function that writes text specific to that component type
+        return {
+            "entities": basic_entity_author if extraction_version <= 1.1 else all_entities_author,
+            "pronouns": pronouns_author,
+            "events": list_triples_author,  # predicates_author,
+            "summary": lambda x: x,
+        }
+
+    def write_context_text(self, full_context):
+        """
+        Turn a list of narrative elements into a string describing the context.
+
+        :param full_context: a list, each item (a dict) corresponding to all the narrative elements in that passage
+        :rtype: str
+        """
+
+        # count up top components
+        top_context_components = self.trim_context_components(full_context)
+
+        context_text = ""
+        for k, component in top_context_components.items():
+            f = self.author_functions.get(k, DEFAULT_COMPONENT_FUNC)
+            context_text += f(component) + " "
+        return context_text
+
+    def make_context_components(self, passage_text):
+        """
+        :param passage_text: the text from a single passage
+        :return: a dict containing all narrative elements in the passage
+        """
+
+        doc = nlp(passage_text)
+
+        context_components = {
+            'v': self.extraction_version,  # Context version (I expect to go through a few iterations)
+            'pronouns': extract_pronouns(doc),
+            'entities': ner(passage_text),
+        }
+
+        if self.extraction_version >= 1.3:
+            context_components['events'] = extract_events(doc)
+
+        # TODO it this way
+        # for k, v in ner(passage_text).items():
+        #     context_components['entity_' + k] = v
+
+        return context_components
+
+    def flatten_context(self, full_context):
+        """
+        Take a list of dicts, each representing the narrative elements in one passage, and return a single dict containing
+        all narrative elements across all passages.
+        """
+        joined = {
+            'pronouns': [],
+            'entities': defaultdict(list),
+        }
+        if self.extraction_version >= 1.3:
+            joined['events'] = []
+
+        for passage_components in full_context:
+            joined['pronouns'] += passage_components['pronouns']
+            for k, v in passage_components['entities'].items():
+                joined['entities'][k] += v
+            if self.extraction_version >= 1.3:
+                joined['events'] += passage_components['events']
+
+        return joined
+
+    def trim_context_components(self, full_context, topk=8):
+        """
+        Takes a list of context components (dicts), each corresponding to all narrative elements in a passage.
+
+        Then, counts the occurrences of each element across all passages. Returns the most common narrative elements across
+        all passages, with their counts
+
+        :param full_context: a list, each item (a dict) corresponding to all the narrative elements in that passage
+        :returns: a dict of mapping narrative element type -> their counts (for counted elements) or the elements in order (for non-counted elements)
+        """
+        if not full_context:
+            return {}
+
+        flattened = self.flatten_context(full_context)
+
+        counted = {
+            'pronouns': Counter(flattened['pronouns']),
+            'entities': {}
+        }
+        for ent_type, entities in flattened['entities'].items():
+            counted['entities'][ent_type] = Counter(entities)
+
+        top_context_components = {}
+        top_context_components['pronouns'] = [p for p, count in counted['pronouns'].most_common(topk)]
+        top_context_components['entities'] = {
+            ent_type: entities.most_common(topk) for ent_type, entities in counted['entities'].items()
+        }
+        for ent_type, entities in top_context_components['entities'].items():
+            top_context_components['entities'][ent_type] = [e for (e, count) in entities]
+
+        if self.extraction_version >= 1.3:
+            top_context_components['events'] = flattened['events']
+
+        return top_context_components
 
 
 def load_nlp_modules():
@@ -205,13 +316,17 @@ def predicates_author(triples):
     return text
 
 
-def list_triples_author(triples):
+def list_triples_author(event_triples):
     """
-    Convert a textacy.extract.triples.SVOTriple to a predicate style string description.
+    Convert a textacy.extract.triples.SVOTriple to a list of events.
     """
+    while len(event_triples) > MAX_EVENTS_LENGTH:
+        # over = len(event_triples) - MAX_EVENTS_LENGTH
+        event_triples = event_triples[::2]  # Cut back by half
+
     text = 'Preceding Events:\n'
-    if triples:
-        for subject, verb, object in triples:
+    if event_triples:
+        for subject, verb, object in event_triples:
             text += f'* {t2s(subject, False)} {t2s(verb, False)} {t2s(object, False)}\n'
     else:
         text += 'None'
@@ -256,116 +371,6 @@ def write_named_context_component(typed_entities, ent_type):
     return f"Mentioned {plural_type_desc}: {formatted_entities}.", entities_exist
 
 
-def make_context_components(passage_text):
-    """
-    :param passage_text: the text from a single passage
-    :return: a dict containing all narrative elements in the passage
-    """
-
-    doc = nlp(passage_text)
-
-    context_components = {
-        'v': EXTRACTION_VERSION,  # Context version (I expect to go through a few iterations)
-        'pronouns': extract_pronouns(doc),
-        'entities': ner(passage_text),
-    }
-
-    if EXTRACTION_VERSION >= 1.3:
-        context_components['events'] = extract_events(doc)
-
-    # TODO it this way
-    # for k, v in ner(passage_text).items():
-    #     context_components['entity_' + k] = v
-
-    return context_components
-
-
-def flatten_context(full_context):
-    """
-    Take a list of dicts, each representing the narrative elements in one passage, and return a single dict containing
-    all narrative elements across all passages.
-    """
-    joined = {
-        'pronouns': [],
-        'entities': defaultdict(list),
-    }
-    if EXTRACTION_VERSION >= 1.3:
-        joined['events'] = []
-
-    for passage_components in full_context:
-        joined['pronouns'] += passage_components['pronouns']
-        for k, v in passage_components['entities'].items():
-            joined['entities'][k] += v
-        if EXTRACTION_VERSION >= 1.3:
-            joined['events'] += passage_components['events']
-
-    return joined
-
-
-def trim_context_components(full_context, topk=8):
-    """
-    Takes a list of context components (dicts), each corresponding to all narrative elements in a passage.
-
-    Then, counts the occurrences of each element across all passages. Returns the most common narrative elements across
-    all passages, with their counts
-
-    :param full_context: a list, each item (a dict) corresponding to all the narrative elements in that passage
-    :returns: a dict of mapping narrative element type -> their counts (for counted elements) or the elements in order (for non-counted elements)
-    """
-    if not full_context:
-        return {}
-
-    flattened = flatten_context(full_context)
-
-    counted = {
-        'pronouns': Counter(flattened['pronouns']),
-        'entities': {}
-    }
-    for ent_type, entities in flattened['entities'].items():
-        counted['entities'][ent_type] = Counter(entities)
-
-    top_context_components = {}
-    top_context_components['pronouns'] = [p for p, count in counted['pronouns'].most_common(topk)]
-    top_context_components['entities'] = {
-        ent_type: entities.most_common(topk) for ent_type, entities in counted['entities'].items()
-    }
-    for ent_type, entities in top_context_components['entities'].items():
-        top_context_components['entities'][ent_type] = [e for (e, count) in entities]
-
-    if EXTRACTION_VERSION >= 1.3:
-        top_context_components['events'] = flattened['events']
-
-    return top_context_components
-
-
-# map from context component to a function that writes text specific to that component type
-CONTEXT_COMPONENT_AUTHOR_FUNC = {
-    "entities": basic_entity_author if EXTRACTION_VERSION <= 1.1 else all_entities_author,
-    "pronouns": pronouns_author,
-    "events": list_triples_author,  # predicates_author,
-    "summary": lambda x: x,
-}
-DEFAULT_COMPONENT_FUNC = lambda x: str(x)
-
-
-def write_context_text(full_context):
-    """
-    Turn a list of narrative elements into a string describing the context.
-
-    :param full_context: a list, each item (a dict) corresponding to all the narrative elements in that passage
-    :rtype: str
-    """
-
-    # count up top components
-    top_context_components = trim_context_components(full_context)
-
-    context_text = ""
-    for k, component in top_context_components.items():
-        f = CONTEXT_COMPONENT_AUTHOR_FUNC.get(k, DEFAULT_COMPONENT_FUNC)
-        context_text += f(component) + " "
-    return context_text
-
-
 if __name__ == '__main__':
     passage = [
         """:: her research
@@ -387,9 +392,11 @@ This lead her to believe that the murderer(s) were still in London, and she woul
         Anna sits in her bed and knits. Someone knocks on the window to say hi. They lock eyes. You observe all of this."""
                 ][-1]
 
+    reader = Reader(1.3)
+
     passage = unsplit_lines(split_lines(passage)[1:])
     cleaned_passage_text = passage_to_text(passage)
     print("passage", cleaned_passage_text)
-    context_components = make_context_components(cleaned_passage_text)
+    context_components = reader.make_context_components(cleaned_passage_text)
     print("context components", context_components)
-    print(write_context_text([context_components]))
+    print(reader.write_context_text([context_components]))

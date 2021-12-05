@@ -3,12 +3,13 @@ import twee_utils as utils
 from display import make_selection, clear, italic, bold, italic_start, italic_end
 from external_model import TwineGenerator
 from contextual_tree import PassageTree
-from narrative_reader import write_context_text, set_extraction_version
+from narrative_reader import Reader
 
 VERBOSE = True
 
 GEN_COUNT = 16
 DEFAULT_GEN_COUNT = 16
+MAX_GEN_COUNT = 99
 
 DATA_DIR = './generated_games/'
 TWEE_DIRS = ['../twee/', './twee/']
@@ -25,7 +26,7 @@ CONFIG = PRESET_CONFIGS[0]
 # Construct a contextual GPT-3 engine
 generator = TwineGenerator(CONFIG[0])
 # Decide which version of narrative extraction to use
-set_extraction_version(CONFIG[1])
+PassageTree.reader = Reader(CONFIG[1])
 USE_CONTEXT = CONFIG[2]
 
 
@@ -177,7 +178,7 @@ def make_and_run_twee(story_title, by, passages):
 def make_context_for_interaction(passage_title, link_to_parent):
     parent = link_to_parent[passage_title]
     context_components = PassageTree.construct_context(parent)
-    context = write_context_text(context_components)
+    context = PassageTree.reader.write_context_text(context_components)
     return context
 
 
@@ -250,6 +251,7 @@ def generate_n(passages, passage_title, links_to_do, links_done, link_to_parent,
     """
     num_generated = 0
     links_to_do.append(passage_title)  # We've already popped one but we want to generate it too
+    n = min(n, MAX_GEN_COUNT)
     while links_to_do and num_generated < n:
         passage_title = links_to_do.pop(0)
         context = make_context_for_interaction(passage_title, link_to_parent)
@@ -264,6 +266,9 @@ def generate_n(passages, passage_title, links_to_do, links_done, link_to_parent,
 
 
 def done(passages, passage_title, links_to_do, links_done, link_to_parent):
+    """
+    Fill each remaining passage with nothing text.
+    """
     links_to_do.append(passage_title)  # We've already popped one but we want to generate it too
     while links_to_do:
         passage_title = links_to_do.pop(0)
