@@ -60,6 +60,7 @@ def _make_selection(stdscr, classes, message='(select one)'):
 
 
 def make_selection(classes, *args, **kwargs):
+    print('debug classes', classes)
     return curses.wrapper(_make_selection, classes, *args, **kwargs)
 
 

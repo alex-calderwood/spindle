@@ -16,7 +16,7 @@ TWEE_DIRS = ['../twee/', './twee/']
 
 PRESET_CONFIGS = [
     # (twine generator, narrative element version, use_context)
-    ("context", 1.3, True),  # 0 - All NER elements, pronouns, bulleted events
+    ("events", 1.3, True),   # 0 - All NER elements, pronouns, bulleted events
     ("context", 1.2, True),  # 1 - LOC and PER NER elements, pronouns
     ("naive", 1.1, False),   # 2 - no context
 ]

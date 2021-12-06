@@ -21,6 +21,8 @@ class TwineGenerator:
         self.model = model.lower()
 
         self.verbose = bool(verbose)
+        if self.model == 'events':
+            self._call_model = TwineGenerator._call_contextual_event_model()
         if self.model == 'context':
             self._call_model = TwineGenerator._call_contextual_model
         elif self.model == 'mock':
@@ -71,6 +73,29 @@ class TwineGenerator:
 
     @staticmethod
     def _call_contextual_model(prompt):
+        """
+        Return a generated twee passage from a given title. The code is elsewhere modular to allow this to be re-implemented
+        with any language model. Here, we call a fine-tuned GPT-3 instance trained to generate scaffolded Twee.
+        """
+
+        model = 'curie:ft-user-wmco7qacght9seweh8jgp4ib-2021-11-29-05-45-10'
+
+        response = openai.Completion.create(
+            model=model,
+            prompt=prompt,
+            temperature=0.7,
+            max_tokens=1000,
+            top_p=1,
+            frequency_penalty=0,
+            presence_penalty=0,
+            stop=utils.END,
+        )
+
+        return response['choices'][0]['text']
+
+
+    @staticmethod
+    def _call_contextual_event_model(prompt):
         """
         Return a generated twee passage from a given title. The code is elsewhere modular to allow this to be re-implemented
         with any language model. Here, we call a fine-tuned GPT-3 instance trained to generate scaffolded Twee.

@@ -261,7 +261,6 @@ def extract_pronouns(doc):
 
 def extract_events(doc):
     triples = [svo for svo in textacy.extract.subject_verb_object_triples(doc)]
-    print('trip', triples)
     return triples
 
 

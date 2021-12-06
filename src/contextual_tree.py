@@ -28,7 +28,7 @@ class PassageTree(NodeMixin):
         self.name = self.title  # + ': ' + str(self.context_text)  # + " context: " + str(self.context)
 
     def __str__(self):
-        return f'<PassageTree {self.name}>'
+        return f'<PassageTree {self.name} v{self.reader.extraction_version}>'
 
     def render(self):
         print(RenderTree(self).by_attr('name'))
@@ -52,7 +52,18 @@ class PassageTree(NodeMixin):
         """
         Run the NLP pipeline to extract from the current passage, all interesting story items.
         """
-        return PassageTree.reader.make_context_components(self.cleaned_passage_text)
+        return PassageTree.get_reader().make_context_components(self.cleaned_passage_text)
+
+    @staticmethod
+    def get_reader(version=1.3):
+        """
+        Return the singleton reader class or initialize one to the given version if the reader does not exist.
+        """
+
+        if PassageTree.reader is None:
+            PassageTree.reader = Reader(version)
+
+        return PassageTree.reader
 
     @staticmethod
     def construct_context(parent):
