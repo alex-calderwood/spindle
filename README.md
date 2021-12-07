@@ -25,5 +25,10 @@ At present, the GPT-3 model I trained is not publically accessible, but I am wor
 
 ## Create training data file
 
-- Run through the cells in `data_exploration.ipynb`
+- Run through the cells in `src/create_contextual_training_data.ipynb`
 - Will create a file that can be uploaded to GPT-3 for fine-tuning
+
+# Run interactive twine generation
+
+    python src/spindle.py
+
