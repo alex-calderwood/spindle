@@ -1,6 +1,9 @@
 # Spindle - (work in progress)
 
-Spindle is a tool that for interactive, branching fiction writing. Machine-human cowriting is still in a nascent stage - but what can we do with new advents in large language models?
+Spindle is a mixed-initiative tool for writing interactive, branching fiction.
+
+At present, the GPT-3 model I trained is not publically accessible, but I am working on that. This repo contains all resources needed to collect training data and pretrain your own for under $10.
+
 
 ![Spindle](spindle.png)
 
@@ -8,7 +11,7 @@ Spindle is a tool that for interactive, branching fiction writing. Machine-human
 
     pip install -r requirements.txt
 
-# Run interactive twine generation (requires first pretraining a GPT-3 instance)
+# Run interactive twine generation
 
     python src/spindle.py
 
