@@ -1,31 +1,31 @@
 from collections import defaultdict
-from anytree import RenderTree, NodeMixin
+from anytree import RenderTree, NodeMixin, PreOrderIter
 from anytree.exporter import DotExporter
 from twee_utils import *
-from narrative_reader import Reader
+from narrative_reader import Reader, predicates_author
 
 
 class PassageTree(NodeMixin):
     # Static reader version
     reader = None
-    # AnyTree Docs: https://anytree.readthedocs.io/en/2.8.0/
     def __init__(self, passage, title=None, parent=None, raw_passage=None, compute_context=True):
         """
         A contextualized node in a Twine tree, ie, a single passage.
         :param compute_context: whether or not to add context to the contextual nodes (can be slow)
+
+        AnyTree Docs: https://anytree.readthedocs.io/en/2.8.0/
         """
         self.lines = split_lines(passage)
         self.passage = passage
         self.cleaned_passage_text = passage_to_text('\n'.join(self.lines[1:])) if not raw_passage else passage_to_text('\n'.join(raw_passage.split('\n')[1:]))
         self.title = title if title else get_title(self.lines)
-        # self.title_text = title_to_text(title, remove_tag=True)
         self.parent = parent
         self._links = None
         self.narrative_elements = self._extract_narrative_elements()
         # the context is all relevant story details along the path from the root to the current node
         self.full_context = self.construct_context(parent) if (parent and compute_context) else []
         self.context_text = PassageTree.reader.write_context_text(self.full_context)
-        self.name = self.title  # + ': ' + str(self.context_text)  # + " context: " + str(self.context)
+        self.name = self.title
 
     def __str__(self):
         return f'<PassageTree {self.name} v{self.reader.extraction_version}>'
@@ -53,6 +53,24 @@ class PassageTree(NodeMixin):
         Run the NLP pipeline to extract from the current passage, all interesting story items.
         """
         return PassageTree.get_reader().make_context_components(self.cleaned_passage_text)
+
+    def convert_events_to_fake_token(self):
+        """
+        spacy doesn't support the pickling of individual tokens
+        this was my attempt to work around that
+        """
+        for n in PreOrderIter(self):
+            new_events = []
+            for triple in n.narrative_elements['events']:
+                fake_triple = []
+                for component in triple:
+                    fake_triple.append([BespokeToken(token) for token in component])
+                new_events.append(fake_triple)
+
+            n.narrative_elements['events'] = new_events
+
+        for n in PreOrderIter(self):
+            print(n.narrative_elements['events'])
 
     @staticmethod
     def get_reader(version=1.3):
@@ -125,15 +143,31 @@ class PassageTree(NodeMixin):
                 print(f"passage {link} does not exist")
 
 
+class BespokeToken:
+    def __init__(self, token):
+        self.text = token.text
+        self.lemma_ = token.lemma_
+
+    def __repr__(self):
+        return f"~{self.text}"
+
+    def __str__(self):
+        return self.text
+
+
 if __name__ == '__main__':
     # TODO need to check whether 'name [1]' should link to 'name' or not
-    game = './generated_games/the_garden_3.tw'
+    game = './generated_games/context_1.tw'
     print(f'game {game}')
     with open(game) as f:
         twee_str = f.read()
         print(f'tree for {game}:')
         PassageTree.reader = Reader(1.3)
         tree, _ = PassageTree.create(twee=twee_str)
+        tree.convert_events_to_fake_token()
+        for n in PreOrderIter(tree):
+            print(n, predicates_author(n.narrative_elements['events']))
+
         dot = DotExporter(tree, nodenamefunc=lambda n: f'{n.name}')
         dot.to_picture("./tree.png")
         tree.render()

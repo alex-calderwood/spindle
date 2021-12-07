@@ -22,8 +22,8 @@ class TwineGenerator:
 
         self.verbose = bool(verbose)
         if self.model == 'events':
-            self._call_model = TwineGenerator._call_contextual_event_model()
-        if self.model == 'context':
+            self._call_model = TwineGenerator._call_contextual_event_model
+        elif self.model == 'context':
             self._call_model = TwineGenerator._call_contextual_model
         elif self.model == 'mock':
             self._call_model = TwineGenerator._mock_generate
@@ -101,7 +101,8 @@ class TwineGenerator:
         with any language model. Here, we call a fine-tuned GPT-3 instance trained to generate scaffolded Twee.
         """
 
-        model = 'curie:ft-user-wmco7qacght9seweh8jgp4ib-2021-11-29-05-45-10'
+
+        model = 'curie:ft-user-wmco7qacght9seweh8jgp4ib-2021-12-07-08-07-09'
 
         response = openai.Completion.create(
             model=model,

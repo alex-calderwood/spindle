@@ -5,7 +5,7 @@ from external_model import TwineGenerator
 from contextual_tree import PassageTree
 from narrative_reader import Reader
 
-VERBOSE = True
+VERBOSE = False
 
 GEN_COUNT = 16
 DEFAULT_GEN_COUNT = 16
