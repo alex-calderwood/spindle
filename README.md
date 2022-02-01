@@ -9,7 +9,12 @@ At present, the GPT-3 model I trained is not publically accessible, but I am wor
 
 # Setup
 
-Install the python 3 requirements. Recommended that you do this in a virtual environment! I like [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html)
+You must have Python 3.7 for this project. Optionally, I recommend using a virtual environment like [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html) for managing the environments as follows.
+
+    conda create -n spindle python=3.7
+    conda activate spindle
+
+Install the python 3 requirements. 
 
     pip install -r src/requirements.txt
     
