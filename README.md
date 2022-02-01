@@ -9,7 +9,14 @@ At present, the GPT-3 model I trained is not publically accessible, but I am wor
 
 # Setup
 
-    pip install -r requirements.txt
+Install the python 3 requirements. Recommended that you do this in a virtual environment! I like [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html)
+
+    pip install -r src/requirements.txt
+    
+Download the largest spacy language model.
+
+    chmod +x src/setup_spacy.sh
+    src/setup_spacy.sh
 
 # Run interactive twine generation
 
