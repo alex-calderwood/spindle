@@ -1,0 +1,6 @@
+My job is to summarize short stories into a single sentence. Here is an example of a longer story:
+"""
+{}
+"""
+This is my one-sentence summary of that passage:
+"""

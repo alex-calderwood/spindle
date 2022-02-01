@@ -15,3 +15,5 @@ tenacity
 pytest
 parameterized
 strbalance
+spacy
+textacy

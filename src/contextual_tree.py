@@ -1,43 +1,49 @@
 from collections import defaultdict
-from anytree import Node, RenderTree, NodeMixin
+from anytree import RenderTree, NodeMixin, PreOrderIter
 from anytree.exporter import DotExporter
 from twee_utils import *
-from analysis import make_context_components, write_context_text
+from narrative_reader import Reader, predicates_author
 
 
-class ContextualTweeTree(NodeMixin):
-    # AnyTree Docs: https://anytree.readthedocs.io/en/2.8.0/
+class PassageTree(NodeMixin):
+    # Static reader version
+    reader = None
     def __init__(self, passage, title=None, parent=None, raw_passage=None, compute_context=True):
         """
         A contextualized node in a Twine tree, ie, a single passage.
         :param compute_context: whether or not to add context to the contextual nodes (can be slow)
+
+        AnyTree Docs: https://anytree.readthedocs.io/en/2.8.0/
         """
         self.lines = split_lines(passage)
         self.passage = passage
-        self.passage_text = passage_to_text('\n'.join(self.lines[1:])) if not raw_passage else passage_to_text('\n'.join(raw_passage.split('\n')[1:]))
+        self.cleaned_passage_text = passage_to_text('\n'.join(self.lines[1:])) if not raw_passage else passage_to_text('\n'.join(raw_passage.split('\n')[1:]))
         self.title = title if title else get_title(self.lines)
         self.parent = parent
         self._links = None
         self.narrative_elements = self._extract_narrative_elements()
         # the context is all relevant story details along the path from the root to the current node
-        self.full_context = (parent.full_context + [parent.narrative_elements]) if (parent and compute_context) else []
-        self.context_text = write_context_text(self.full_context)
-        self.name = title_to_text(self.title) + ': ' + str(self.context_text)  # + " context: " + str(self.context)
+        self.full_context = self.construct_context(parent) if (parent and compute_context) else []
+        self.context_text = PassageTree.reader.write_context_text(self.full_context)
+        self.name = self.title
 
     def __str__(self):
-        return f'<ContextualTweeTree {self.name}>'
+        return f'<PassageTree {self.name} v{self.reader.extraction_version}>'
 
     def render(self):
         print(RenderTree(self).by_attr('name'))
 
     def render_root(self):
+        print(self.get_root().render())
+
+    def get_root(self):
         node = self
         parent = node.parent
         while parent is not None:
             temp = parent
             parent = node.parent
             node = temp
-        print(node.render())
+        return node
 
     def get_links(self):
         return self._links if self._links else get_links(self.passage)
@@ -46,7 +52,48 @@ class ContextualTweeTree(NodeMixin):
         """
         Run the NLP pipeline to extract from the current passage, all interesting story items.
         """
-        return make_context_components(self.passage_text)
+        return PassageTree.get_reader().make_context_components(self.cleaned_passage_text)
+
+    def convert_events_to_fake_token(self):
+        """
+        spacy doesn't support the pickling of individual tokens
+        this was my attempt to work around that
+        """
+        for n in PreOrderIter(self):
+            new_events = []
+            for triple in n.narrative_elements['events']:
+                fake_triple = []
+                for component in triple:
+                    fake_triple.append([BespokeToken(token) for token in component])
+                new_events.append(fake_triple)
+
+            n.narrative_elements['events'] = new_events
+
+        for n in PreOrderIter(self):
+            print(n.narrative_elements['events'])
+
+    @staticmethod
+    def get_reader(version=1.3):
+        """
+        Return the singleton reader class or initialize one to the given version if the reader does not exist.
+        """
+
+        if PassageTree.reader is None:
+            PassageTree.reader = Reader(version)
+
+        return PassageTree.reader
+
+    @staticmethod
+    def construct_context(parent):
+        """
+        Returns a list of context components / narrative elements.
+        Each are dictionaries of the form:
+            {narrative element type: value ...}
+        """
+        if parent is None:
+            return []
+
+        return parent.full_context + [parent.narrative_elements]
 
     @staticmethod
     def create(twee=None, passages=None):
@@ -69,38 +116,58 @@ class ContextualTweeTree(NodeMixin):
         passage_dict = make_passage_dict(passages)
 
         # Create a contextual tree
-        root = ContextualTweeTree(start)
-        ContextualTweeTree._traverse_and_create_context(root, passage_dict)
-        return root
+        root = PassageTree(start)
+        PassageTree._traverse_and_create_context(root, passage_dict, defaultdict(bool))
+        return root, passage_dict
 
     @staticmethod
-    def _traverse_and_create_context(node, passage_dict):
+    def _traverse_and_create_context(node, passage_dict, visited):
         """
         Helper method for tree creation.
         Add children to a twee tree by recursively iterating over the links in each twee passage,
         keeping track of the context you've seen before.
         :param node: the current root node to expand
-        :param context: the context (including the parent)
         :param passage_dict: a mapping from link (title text) to passage
+        :param visited: a dict mapping link -> a bool of whether its been visited. should have been a set of
         """
         for link in node.get_links():
+            if visited[link]:
+                continue
             passage = passage_dict.get(link)
             if passage:
                 # create the child and add it to the parent
-                child_node = ContextualTweeTree(passage, title=make_title(link), parent=node)
-                ContextualTweeTree._traverse_and_create_context(child_node, passage_dict)
+                child_node = PassageTree(passage, title=make_title(link), parent=node)
+                visited[link] = True
+                PassageTree._traverse_and_create_context(child_node, passage_dict, visited)
             else:
                 print(f"passage {link} does not exist")
 
 
+class BespokeToken:
+    def __init__(self, token):
+        self.text = token.text
+        self.lemma_ = token.lemma_
+
+    def __repr__(self):
+        return f"~{self.text}"
+
+    def __str__(self):
+        return self.text
+
+
 if __name__ == '__main__':
-    game = './generated_games/the_garden_2.tw'
+    # TODO need to check whether 'name [1]' should link to 'name' or not
+    game = './generated_games/context_1.tw'
     print(f'game {game}')
     with open(game) as f:
         twee_str = f.read()
         print(f'tree for {game}:')
-        tree = ContextualTweeTree.create(twee=twee_str)
-        # dot = DotExporter(tree, nodenamefunc=lambda n: f'{n.name} context {n.context}')
+        PassageTree.reader = Reader(1.3)
+        tree, _ = PassageTree.create(twee=twee_str)
+        tree.convert_events_to_fake_token()
+        for n in PreOrderIter(tree):
+            print(n, predicates_author(n.narrative_elements['events']))
+
         dot = DotExporter(tree, nodenamefunc=lambda n: f'{n.name}')
         dot.to_picture("./tree.png")
         tree.render()

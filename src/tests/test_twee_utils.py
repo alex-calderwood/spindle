@@ -44,6 +44,84 @@ class TestIsStartIntegration(unittest.TestCase):
         )
 
 
+class TestIsSpecialPassage(unittest.TestCase):
+    @parameterized.expand([
+        ["::lick", False],
+        ["::StoryTitle", True],
+        ["::StoryTitle", True],
+        [":: StoryTitle", True],
+        [":: StoryTitle [-]", True],
+        [":: storytitle [4]", True],
+        [":: Started to lick [4]", False],
+        [":: StorySubtitle", True],
+        [":: Storymenu", True],
+    ])
+    def test_is_special(self, passage, actual):
+        self.assertEqual(
+            is_special_passage(passage),
+            actual
+        )
+
+
+# class TestTweeToGenAndBack(unittest.TestCase):
+#     @parameterized.expand([
+#         ":: lick",
+#         ":: lick\nyour shoes",
+#     ])
+#     def test_is_special(self, twee):
+#         gen_prompt, gen_completion = twee_to_gen_format_3(twee)
+#         twee2 = gen_to_twee_format_3(gen_prompt, gen_completion)
+#         self.assertEqual(
+#             twee,
+#             twee2
+#         )
+
+
+
+class TestTweeToGen(unittest.TestCase):
+    @parameterized.expand([
+        [":: lick", '<|begin|>:: lick<|start|>', ' <|end|>'], # Remember there is a space at the end
+        [":: lick\nThe dog", '<|begin|>:: lick<|start|>', ' The dog<|end|>'],
+        [":: lick\nThe dog\nsaid hi\nhi", '<|begin|>:: lick<|start|>', ' The dog<newline>said hi<newline>hi<|end|>'],
+    ])
+    def test_twee_to_gen(self, twee, prompt, completion):
+        gen_prompt, gen_completion = twee_to_gen_format_3(twee)
+        self.assertEqual(
+            gen_prompt,
+            prompt
+        )
+        self.assertEqual(
+            gen_completion,
+            completion
+        )
+
+    @parameterized.expand([
+        [":: lick", 'The characters are Bob and Bill.', '<|begin|>The characters are Bob and Bill.<|title|>:: lick<|start|>', ' <|end|>'],  # Remember there is a space at the end
+    ])
+    def test_twee_to_gen_w_context(self, twee, context, prompt, completion):
+        gen_prompt, gen_completion = twee_to_gen_format_3(twee, context=context)
+        self.assertEqual(
+            gen_prompt,
+            prompt
+        )
+        self.assertEqual(
+            gen_completion,
+            completion
+        )
+
+class TestGenToTwee(unittest.TestCase):
+    @parameterized.expand([
+        ['<|begin|>:: lick<|start|>', '<|end|>', ":: lick"],  # Not sure this is all correct
+        ['<|begin|>:: lick<|start|>', 'The dog<|end|>', ":: lick\nThe dog"],
+        ['<|begin|>:: lick<|start|>', 'The dog<newline>said hi<newline>hi<|end|>', ":: lick\nThe dog\nsaid hi\nhi"],
+    ])
+    def test_is_special(self, gen_prompt, gen_completion, twee):
+        twee2 = gen_to_twee_format_3(gen_prompt, gen_completion)
+        self.assertEqual(
+            twee2,
+            twee
+        )
+
 class TestTitleToText(unittest.TestCase):
     @parameterized.expand([
         ["::lick", "lick"],
@@ -111,6 +189,7 @@ class TestTweeParsing(unittest.TestCase):
         [" ", True],
         ["", True],
         [":: a thing", False],
+        [":: a stylesheet [stylesheet]", True]
     ])
     def test_is_empty_passage(self, passage, empty):
         self.assertEqual(

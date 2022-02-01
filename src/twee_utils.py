@@ -7,11 +7,9 @@ import shutil
 import random
 import strbalance
 
-num_re = r'\[([0-9]+.?[0-9]*)\]'
+num_re = r'\[([0-9]+.?END[0-9]*)\]'
 
-replaced_number_postfix = '[-]'
 image_postfix = '[Twine.image]'
-valid_postfixes = {replaced_number_postfix, image_postfix}
 
 formats = shutil.get_unpack_formats()
 valid_zip_extensions = []
@@ -27,6 +25,7 @@ END = '<|ef|>'
 BEGIN = BEGIN if SMALL else '<|begin|>'
 NL = NL if SMALL else '<newline>'
 END = END if SMALL else '<|end|>'
+ENDCONTEXT = '<|title|>'
 ENDPROMPT = '<|start|>'
 
 balance_pairs = [
@@ -40,6 +39,12 @@ balance_pairs = [
 # TODO the parenthesis make is such that previous() links are dissalowed, and this should be allowed in the future
 INVALID_LINK_CHARACTERS = '.|[]()<>,*/\\\"\''
 INVALID_PASSAGE_CHARACTERS = '@'
+
+# https://dan-q.github.io/twee2/documentation.html
+SPECIAL_PASSAGES = [
+	'StoryTitle', 'StorySubtitle', 'StoryAuthor', 'StoryMenu',
+	'StorySettings', 'StoryIncludes', 'Annotations', 'audio sources'
+]
 
 balancer = strbalance.Balance(pairs=balance_pairs, custom=True)
 
@@ -114,10 +119,10 @@ def dedupe_in_order(in_list, dont_add=set()):
 
 
 def init_twee(title, author):
-	text = make_title("StoryTitle", False, process=False, line_end='\n')
+	text = make_title("StoryTitle", process=False, line_end='\n')
 	text += title + '\n'
 	text += '\n'
-	text += make_title("StoryAuthor", False, process=False, line_end='\n')
+	text += make_title("StoryAuthor", process=False, line_end='\n')
 	text += author + '\n\n'
 	return text
 
@@ -139,7 +144,7 @@ def try_unzip(file, destination):
 
 
 def make_temp_file(contents):
-	path = f'./temporary_game_files/html_{random.uniform(1000000, 2000000)}'
+	path = f'../temporary_game_files/html_{random.uniform(1000000, 2000000)}'
 	with open(path, 'w') as file:
 		file.write(contents)
 	return path
@@ -157,7 +162,7 @@ def get_html_source(dir):
 	* Important byproduct: if you call this multiple times, the previously returned files may be deleted by subsequent
 	calls. We expect you to move them or deal with them before calling this again *
 	"""
-	temp_dir = f'./temporary_game_files/{random.uniform(1000000, 2000000)}/'
+	temp_dir = f'../temporary_game_files/{random.uniform(1000000, 2000000)}/'
 	if os.path.isdir(temp_dir):
 		shutil.rmtree(temp_dir)
 
@@ -242,13 +247,11 @@ def valid_passage_indicators(passage):
 	# links = get_links(passage)
 	# links_valid = all([is_valid_passage(passage) for l in links])
 	# valid_name = bool(re.search(r'::(.*) \[?(.*)]?', lines[0]))
-	# valid_postfix = any(lines[0].endswith(post) for post in valid_postfixes)
 	return {
 		'valid_prefix': valid_prefix,
 		'balanced': balanced,
 		# 'link_valid': link_valid,
 		# 'valid_name': valid_name,
-		# 'valid_postfix': valid_postfix,
 	}
 
 
@@ -275,17 +278,16 @@ def make_passage_dict(passages):
 	Create a dictionary mapping title to passage
 	:rtype a dict: key: title_text, value: full_passage
 	"""
-	return {title_to_text(get_title(split_lines(passage))): passage for passage in passages}
+	return {title_to_text(get_title(split_lines(passage)), remove_tag=True): passage for passage in passages}
 
 
-def make_title(passage_name, with_num=True, process=True, line_end=''):
+def make_title(passage_name, process=True, line_end=''):
 	"""Make a valid page header from a name"""
 	passage_name = passage_name.lower() if process else passage_name
-	num = f" {replaced_number_postfix}" if with_num else ''
-	return f':: {passage_name}{num}{line_end}'
+	return f':: {passage_name}{line_end}'
 
 
-@cached(cache={})  # cache passages that have already been split to reducce compute time
+@cached(cache={})  # cache passages that have already been split to reduce compute time
 def split_lines(passage):
 	return passage.split('\n')
 
@@ -294,18 +296,19 @@ def get_title(lines):
 	return lines[0].strip()
 
 
-def title_to_text(title):
-	match = re.search(r'::(.*?) ?\[(.*)]', title)
-	if match:
-		return match.group(1).strip()
+def title_to_text(title, remove_tag=False):
+	if remove_tag:
+		match = re.search(r'::(.*?) ?\[(.*)]', title)
+		if match:
+			return match.group(1).strip()
 	match = re.search(r'::(.+)', title)
 	return match.group(1).strip() if match else ''
 
 
 def passage_to_text(passage):
 	"""
-	Similar to get_links,
-	TODO reuse some code between the two
+	Given a twee passage (without the title), return just the cleaned text, devoid of link markers '[' and <<choice>> macros.txt
+	TODO reuse some code between this and get_links.
 	"""
 	# Can't figure out way to do this in one line, but I think its possible, and would be faster
 	new_passage, subs = re.subn(r'\[\[([^\|]*?)]]', r'\1', passage)
@@ -328,17 +331,14 @@ def twee_to_gen_format(twee):
 
 def is_start(passage):
 	# TODO do this better
-	title = title_to_text(get_title(split_lines(passage)))
+	title = title_to_text(get_title(split_lines(passage)), remove_tag=True)
 	return 'start' == str(re.sub(r'\s+', ' ', title.lower()))
 
 
-def clean_numbers(passage, repl='-'):
-	"""
-	Remove passage numbers: [1] -> [-]
-	"""
-	lines = split_lines(passage)
-	lines[0] = re.sub(num_re, '[' + repl + ']', lines[0])
-	return '\n'.join(lines)
+def is_special_passage(passage):
+	title = title_to_text(get_title(split_lines(passage)), remove_tag=True)
+	text = str(re.sub(r'\s+', ' ', title.lower()))
+	return any([text == s.lower() for s in SPECIAL_PASSAGES])
 
 
 def clean_link_text(passage, links):
@@ -352,20 +352,29 @@ def clean_link_text(passage, links):
 	return passage, links
 
 
-def re_number(passages, repl='-'):
-	"""
-	Order passages - add passage numbers back to the de-numbered passages
-	"""
-	repl = '[' + repl + ']'
-	i = 1
-	new_passages = []
-	for p in passages:
-		p_lines = split_lines(p)
-		if p_lines[0].endswith(repl):
-			p_lines[0] = p_lines[0].replace(repl, '[' + str(i) + ']')
-			i += 1
-		new_passages.append('\n'.join(p_lines))
-	return new_passages
+# TODO Don't thikn we need these, will delete soon
+# def clean_numbers(passage, repl='-'):
+# 	"""
+# 	Remove passage numbers: [1] -> [-]
+# 	"""
+# 	lines = split_lines(passage)
+# 	lines[0] = re.sub(num_re, '[' + repl + ']', lines[0])
+# 	return '\n'.join(lines)
+
+# def re_number(passages, repl='-'):
+# 	"""
+# 	Order passages - add passage numbers back to the de-numbered passages
+# 	"""
+# 	repl = '[' + repl + ']'
+# 	i = 1
+# 	new_passages = []
+# 	for p in passages:
+# 		p_lines = split_lines(p)
+# 		if p_lines[0].endswith(repl):
+# 			p_lines[0] = p_lines[0].replace(repl, '[' + str(i) + ']')
+# 			i += 1
+# 		new_passages.append('\n'.join(p_lines))
+# 	return new_passages
 
 
 def clean_images(twee):
@@ -421,7 +430,7 @@ def remove_duplicate_newlines(twee):
 	return re.sub(r'\n+', '\n', twee)
 
 
-def make_prompt(title):
+def make_prompt(title, context=''):
 	"""
 	input:
 		a twee title ie
@@ -430,15 +439,20 @@ def make_prompt(title):
 		a twee title surounded by GPT-3 readable start/end tokens
 		<begin tokens>:: titlename<end tokens>
 	"""
-	return BEGIN + title + ENDPROMPT
+	if context:
+		context = context.strip() + ENDCONTEXT
+
+	return BEGIN + context + title + ENDPROMPT
 
 
 def make_completion(passage_without_title):
 	"""
 	input:
 		'a passage containing [[links|link]], etc'
-	ouput:
+	output:
 		' a passage containing [[links|link]], etc<end tokens>'
+
+	The completion should always begin with a space.
 	"""
 	return " " + passage_without_title.replace('\n', NL).strip() + END
 
@@ -453,8 +467,31 @@ def twee_to_gen_format_2(twee):
 
 def gen_to_twee_format_2(prompt='', response=''):
 	twee = prompt + response
-	cleaned = twee.replace(BEGIN, '').replace(ENDPROMPT, '').replace(END, '').replace(NL, '\n')
+	cleaned = twee.replace(BEGIN, '').replace(ENDPROMPT, '').replace(ENDCONTEXT, '').replace(END, '').replace(NL, '\n')
 	return cleaned
+
+
+def twee_to_gen_format_3(twee, context=''):
+	"""
+	Prepare for GPT-3 using context.
+	"""
+	lines = [p for p in split_lines(twee)]
+	title = lines[0]
+	rest_of_passage = remove_duplicate_newlines(unsplit_lines(lines[1:]))
+	return make_prompt(title, context=context), make_completion(rest_of_passage)
+
+
+def gen_to_twee_format_3(prompt='', response=''):
+	"""
+	Process the generated content from GPT-3
+	"""
+	bad_things = f'{re.escape(BEGIN)}|{re.escape(ENDPROMPT)}|{re.escape(ENDCONTEXT)}|{re.escape(END)}'
+	prompt = re.subn(bad_things, '', prompt)[0].replace(NL, '\n')
+	response = re.subn(bad_things, '', response)[0].replace(NL, '\n')
+
+	nl = '\n' if prompt and response else ''
+	twee = prompt + nl + response
+	return twee
 
 
 def gen_to_twee_format(gen):
@@ -474,6 +511,10 @@ def split_passages(twee):
 
 def unsplit_passages(passages):
 	return '\n\n'.join(passages)
+
+
+def unsplit_lines(lines):
+	return '\n'.join(lines)
 
 
 def page_number(passage):
@@ -506,15 +547,15 @@ def untwee_all(source_html_dir, write_twee_to):
 			w.write(html)
 
 
-def untwee(html_path):
-	untwee_cmd = f"twee/untwee {html_path}"  # launch untwee (python2 script) using bash
+def untwee(html_path, twee_exec='../twee/'):
+	untwee_cmd = f"{twee_exec}untwee {html_path}"  # launch untwee (python2 script) using bash
 	process = subprocess.Popen(untwee_cmd.split(), stdout=subprocess.PIPE)
 	twee_text, error = process.communicate()  # receive output from the python2 script
 	return twee_text.strip(), error
 
 
-def twee(twee_path):
-	twee_cmd = f"twee/twee {twee_path}"  # launch untwee (python2 script) using bash
+def twee(twee_path, twee_exec='../twee/'):
+	twee_cmd = f"{twee_exec}twee {twee_path}"  # launch untwee (python2 script) using bash
 	process = subprocess.Popen(twee_cmd.split(), stdout=subprocess.PIPE)
 	html, error = process.communicate()  # receive output from the python2 script
 	return html.strip(), error
@@ -527,7 +568,7 @@ def open_file(file):
 def clean_twee(twee):
 	twee = clean_images(twee)
 	passages = order([p for p in split_passages(twee)])
-	passages = [clean_numbers(p) for p in passages]
+	# passages = [clean_numbers(p) for p in passages] # This actually turns out to be important
 	passages = [remove_html(p) for p in passages if not is_empty_passage(p)]
 	twee = unsplit_passages(passages)
 	twee = remove_duplicate_newlines(twee)
@@ -535,18 +576,28 @@ def clean_twee(twee):
 
 
 def is_empty_passage(passage):
+	# TODO the last case better
 	passage = passage.strip()
-	return not(bool(passage)) or passage == '::untitled passage'
+	top = split_lines(passage)[0]
+	return not(bool(passage)) or passage == '::untitled passage' or '[stylesheet]' in top or '[script]' in top or '[twee2]' in top
 
 
-def get_macros(twee, replace=None):
+def get_macros(twee):
 	macros = re.findall(r'<<(.*?)>>', twee)
 	return macros
+
+
+def replace_obvious_macros(twee):
+	twee = re.sub(r'<<begin>>', '[[begin]]', twee)
+	return twee
+
 
 
 def replace_macros(twee):
 	twee = re.sub(r'<<(.*?)>> ?', '', twee)
 	return twee
+
+# TODO get rid of scripts :: \nThe day after the ceremony, flush with determination and new power, you called a meeting and told all the staff that student deaths <<replace "should be" "could be">>must be<<endreplace>> eliminated in the next year.\n\nYou were given a [[standing ovation.|unknown]]\n\n\n:: inlinecss [script]\nString.prototype.unDash = function()\n{\n\tvar s = this.split("-");\n\tif(s.length > 1)\n\t\tfor(var t=1; t < s.length; t++)\n\t\t\ts[t] = s[t].substr(0,1).toUpperCase() + s[t].substr(1);\n\tretur...
 
 
 if __name__ == '__main__':
