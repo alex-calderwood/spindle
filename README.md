@@ -22,6 +22,12 @@ Download the largest spacy language model.
 
     chmod +x src/setup_spacy.sh
     src/setup_spacy.sh
+    
+Add your OpenAI API Key
+
+Navigate to [https://beta.openai.com/account/api-keys](https://beta.openai.com/account/api-keys). Download your API key and set it as an environment variable.
+
+    export OPENAI_API_KEY=<YOUR_KEY>
 
 # Run interactive twine generation
 
