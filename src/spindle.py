@@ -74,7 +74,7 @@ def select_passage(passages_todo):
     """
     message = 'To Do List - (Arrow Keys + Enter to Select)'
     selection, i = make_selection(passages_todo, message=message)
-    return selection
+    return passages_todo[i]
 
 
 def human_writes(title):

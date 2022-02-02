@@ -1,6 +1,7 @@
 torch
 spacy
 transformers
+textacy
 openai
 graphviz
 stanza
@@ -16,4 +17,3 @@ pytest
 parameterized
 strbalance
 spacy
-textacy

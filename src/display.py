@@ -1,5 +1,5 @@
 import curses
-import os
+import os, re
 
 ## Terminal Utilities ##
 italic_start, italic_end = ('\x1B[3m', '\x1B[0m')
@@ -19,6 +19,9 @@ def italic(text):
 def bold(text):
     return f'{bold_start}{text}{bold_end}'
 ## End Terminal Utilities #
+
+# The maximum length of a string to display. TODO: This should be based on the width of the display
+MAX_CLASS_LEN = 50
 
 
 def _make_selection(stdscr, classes, message='(select one)'):
@@ -59,8 +62,22 @@ def _make_selection(stdscr, classes, message='(select one)'):
     return classes[option], option
 
 
+def clean_for_curses(classes):
+    """
+    Remove characters that could cause issues for the curses library
+    and shorten the selection length so as not to (likely) run off the page.
+    We should be checking the actual terminal width though.
+    """
+    new = []
+    for s in classes:
+        n = str(s.strip().encode('utf-8', 'ignore'))
+        n = n if len(n) < MAX_CLASS_LEN else n[:MAX_CLASS_LEN - 3] + '...'
+        new.append(n)
+    return new
+
+
 def make_selection(classes, *args, **kwargs):
-    print('debug classes', classes)
+    classes = clean_for_curses(classes)
     return curses.wrapper(_make_selection, classes, *args, **kwargs)
 
 
@@ -70,4 +87,3 @@ if __name__ == '__main__':
     ]
 
     (selection, i) = make_selection(classes)
-    print(selection, i)
