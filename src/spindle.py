@@ -135,36 +135,47 @@ def retrospective(raw_passage, passages, title, links_to_do, links_done, link_to
     else:
         print('Invalid twee! Must try again.')
         links_to_do.append(title)  # put it back
+    
+    try: # Save an intermediate twee file
+        make_twee_text_file(story_title, by, passages)
+    except Exception as e:
+        print(f"Could not save twee file. {e}")
 
     return passage, passages, links_to_do, links_done, link_to_parent
 
 
-def make_and_run_twee(story_title, by, passages):
-    print('making twee...', end='\r')
-    twee = utils.init_twee(story_title, by)
+def make_twee_text_file(story_title, by, passages):
+    print(f'making twee...', end='\r')
+    twee_text = utils.init_twee(story_title, by)
     for passage in passages:
-        twee += passage + "\n\n"
-    twee = re.sub(r'::\s+start', ':: Start', twee)
+        twee_text += passage + "\n\n"
+    twee_text = re.sub(r'::\s+start', ':: Start', twee_text)
 
     file_base = story_title.replace(' ', '_')
     filename = os.path.join(DATA_DIR, f'{file_base}.tw')
     with open(filename, 'w') as f:
-        f.write(twee)
+        f.write(twee_text)
     print(f'Wrote twee to {filename}')
 
+    return filename
+
+
+def run_twee_file(filename):
     html_file = os.path.basename(filename).split('.')[0] + '.html'
     html_file = os.path.join(DATA_DIR, html_file)
 
     did_twee, did_open = False, False
-    for t in TWEE_DIRS:
+    for i, twee_exec in enumerate(TWEE_DIRS):
         try:
-            twee, error = utils.twee(filename, t)
+            twee, error = utils.twee(filename, twee_exec)
             with open(html_file, 'wb') as f:
                 f.write(twee)
                 print(f"Wrote game to {html_file}")
                 did_twee = True
         except Exception as e:
             print(f"Unable to Twee {filename} {e}")
+            if i < len(twee_exec) - 1:
+                print("Retrying with a new twee executable path.")
 
         try:
             utils.open_file(html_file)
@@ -237,12 +248,13 @@ def interactive():
             raise NotImplemented(f"No command {command}. How did you get here?")
 
         # If we get to this point, we assume we've selected a passage
-        passage, passages, links_to_do, links_done, link_to_parent = retrospective(
+        _, passages, links_to_do, links_done, link_to_parent = retrospective(
             passage, passages, passage_title, links_to_do, links_done, link_to_parent, compute_context=USE_CONTEXT
         )
 
     print('Done!')
-    make_and_run_twee(story_title, by, passages)
+    twee_file = make_twee_text_file(story_title, by, passages)
+    run_twee_file(twee_file)
 
 
 def generate_n(passages, passage_title, links_to_do, links_done, link_to_parent, n=DEFAULT_GEN_COUNT):

@@ -48,8 +48,15 @@ def _make_selection(stdscr, classes, message='(select one)'):
                 attr = attributes['highlighted']
             else:
                 attr = attributes['normal']
-            stdscr.addstr(f"{i + 1}. ")
-            stdscr.addstr(classes[i] + '\n', attr)
+            try:
+                stdscr.addstr(f"{i + 1}. ")
+                stdscr.addstr(classes[i] + '\n', attr)
+            except curses.error as e:
+                print(f"Curses error {classes[i]} {attr}")
+                print(e)
+                return None, None
+
+
         c = stdscr.getch()
         if c == curses.KEY_UP and option > 0:
             option -= 1
@@ -70,7 +77,7 @@ def clean_for_curses(classes):
     """
     new = []
     for s in classes:
-        n = str(s.strip().encode('utf-8', 'ignore'))
+        n = str(s.strip().encode('utf-8', 'ignore'), 'utf-8')
         n = n if len(n) < MAX_CLASS_LEN else n[:MAX_CLASS_LEN - 3] + '...'
         new.append(n)
     return new
@@ -87,3 +94,4 @@ if __name__ == '__main__':
     ]
 
     (selection, i) = make_selection(classes)
+    print(selection, i)
