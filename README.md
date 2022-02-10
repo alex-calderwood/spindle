@@ -2,6 +2,9 @@
 
 Spindle is a mixed-initiative tool for writing interactive, branching fiction.
 
+
+![Example](movie2.png)
+
 At present, the GPT-3 model I trained is not publically accessible, but I am working on that. This repo contains all resources needed to collect training data and fine-tune your own model for under $10.
 
 
