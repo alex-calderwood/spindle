@@ -5,6 +5,10 @@ from external_model import TwineGenerator
 from contextual_tree import PassageTree
 from narrative_reader import Reader
 
+from flask import Flask # Flask Cheat Sheet https://s3.us-east-2.amazonaws.com/prettyprinted/flask_cheatsheet.pdf
+app = Flask(__name__)
+from flask import render_template
+
 VERBOSE = False
 
 GEN_COUNT = 16
@@ -30,6 +34,12 @@ PassageTree.reader = Reader(CONFIG[1])
 USE_CONTEXT = CONFIG[2]
 
 
+@app.route('/')
+def index():
+    return render_template('./generated_games/the_garden_2.html')
+
+
+@app.route('/generate/')
 def generate(original_title, context=''):
     print('generating for title: ' + original_title)
 
@@ -193,7 +203,7 @@ def make_context_for_interaction(passage_title, link_to_parent):
     return context
 
 
-def interactive():
+def cmd_line_interaction():
     """
     Write a twine story interactively
     """
@@ -309,4 +319,5 @@ def parse_gen_num(args):
 
 
 if __name__ == '__main__':
-    interactive()
+    cmd_line_interaction()
+    # app.run(debug=True)

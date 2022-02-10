@@ -1,3 +1,4 @@
+flask
 torch
 spacy
 transformers
