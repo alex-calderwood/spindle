@@ -9,30 +9,6 @@ import { createEditor } from 'slate'
 // Import the Slate components and React plugin.
 import { Slate, Editable, withReact } from 'slate-react'
 
-
-// import logo from './logo.svg';
-// import './App.css';
-
-// function App() {
-//   return (
-//     <div className="App">
-//       <header className="App-header">
-//         <img src={logo} className="App-logo" alt="logo" />
-//         <p>
-//           Edit <code>src/App.js</code> and save to reload.
-//         </p>
-//         <a
-//           className="App-link"
-//           href="https://reactjs.org"
-//           target="_blank"
-//           rel="noopener noreferrer"
-//         >
-//           Learn React
-//         </a>
-//       </header>
-//     </div>
-//   );
-// }
 const App = () => {
   const [editor] = useState(() => withReact(createEditor()))
   // Add the initial value when setting up our state.
@@ -44,13 +20,17 @@ const App = () => {
   ])
 
   return (
-    // <h1>hi</h1>
     <Slate
       editor={editor}
       value={value}
       onChange={newValue => setValue(newValue)}
     >
-      <Editable />
+      <Editable
+        // Define a new handler which prints the key that was pressed.
+        onKeyDown={event => {
+          console.log(event.key)
+        }}
+      />
     </Slate>
   )
 }
