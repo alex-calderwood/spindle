@@ -28,10 +28,17 @@ const App = () => {
       <Editable
         // Define a new handler which prints the key that was pressed.
         onKeyDown={event => {
-          console.log(event.key)
+          if (event.key === '&') {
+            // Prevent the ampersand character from being inserted.
+            event.preventDefault()
+            // Execute the `insertText` method when the event occurs.
+            editor.insertText('and')
+          }
+
+          console.log('ky', event.key)
         }}
       />
-    </Slate>
+    </Slate> // Next part of the tutorial https://docs.slatejs.org/walkthroughs/03-defining-custom-elements
   )
 }
 
