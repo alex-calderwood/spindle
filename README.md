@@ -5,7 +5,7 @@ Spindle is a mixed-initiative tool for writing interactive, branching fiction.
 
 ![Example](the_garden.png)
 
-At present, the GPT-3 model I trained is not publically accessible, but I am working on that. This repo contains all resources needed to collect training data and fine-tune your own model for under $10.
+At present, the GPT-3 model I trained is not publicly accessible, but I am working on that. This repo contains all resources needed to collect training data and fine-tune your own model for under $10.
 
 
 ![Spindle](spindle.png)
@@ -28,7 +28,7 @@ Download the largest spacy language model.
     
 Add your OpenAI API Key
 
-Navigate to [https://beta.openai.com/account/api-keys](https://beta.openai.com/account/api-keys). Download your API key and set it as an environment variable.
+Navigate to [https://beta.openai.com/account/api-keys](https://beta.openai.com/account/api-keys). Copy your key and set it as an environment variable.
 
     export OPENAI_API_KEY=<YOUR_KEY>
 
