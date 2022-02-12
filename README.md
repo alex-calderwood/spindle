@@ -28,7 +28,7 @@ Download the largest spacy language model.
     
 Add your OpenAI API Key
 
-Navigate to [https://beta.openai.com/account/api-keys](https://beta.openai.com/account/api-keys). Download your API key and set it as an environment variable.
+Navigate to [https://beta.openai.com/account/api-keys](https://beta.openai.com/account/api-keys). Copy your key and set it as an environment variable.
 
     export OPENAI_API_KEY=<YOUR_KEY>
 
