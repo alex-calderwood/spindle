@@ -1,9 +1,10 @@
 import os, re
+from sys import argv
 import twee_utils as utils
 from display import make_selection, clear, italic, bold, italic_start, italic_end
 from external_model import TwineGenerator
 from contextual_tree import PassageTree
-from narrative_reader import Reader
+from narrative_reader import BasicVersionedReader
 
 VERBOSE = False
 
@@ -16,19 +17,24 @@ TWEE_DIRS = ['../twee/', './twee/']
 
 PRESET_CONFIGS = [
     # (twine generator, narrative element version, use_context)
-    ("events", 1.3, True),   # 0 - All NER elements, pronouns, bulleted events
-    ("context", 1.2, True),  # 1 - LOC and PER NER elements, pronouns
-    ("naive", 1.1, False),   # 2 - no context
-]
+    ("naive", 1.1, False),   
+    ("context", 1.2, True),
+    ("events", 1.3, True), 
+] 
+
 # Select your configuration by changing this number
-CONFIG = PRESET_CONFIGS[0]
+# 1 - no context
+# 2 - LOC and PER NER elements, pronouns
+# 3 - All NER elements, pronouns, bulleted events
+CONFIG = PRESET_CONFIGS[int(argv[1]) - 1] if len(argv) > 1 else PRESET_CONFIGS[2]
 
 # Construct a contextual GPT-3 engine
 generator = TwineGenerator(CONFIG[0])
 # Decide which version of narrative extraction to use
-PassageTree.reader = Reader(CONFIG[1])
+PassageTree.reader = BasicVersionedReader(CONFIG[1])
 USE_CONTEXT = CONFIG[2]
 
+STORY_TITLE, BY = (None, None)
 
 def generate(original_title, context=''):
     print('generating for title: ' + original_title)
@@ -137,7 +143,7 @@ def retrospective(raw_passage, passages, title, links_to_do, links_done, link_to
         links_to_do.append(title)  # put it back
     
     try: # Save an intermediate twee file
-        make_twee_text_file(story_title, by, passages)
+        make_twee_text_file(STORY_TITLE, BY, passages)
     except Exception as e:
         print(f"Could not save twee file. {e}")
 
@@ -197,13 +203,13 @@ def interactive():
     """
     Write a twine story interactively
     """
-    story_title = None
-    while not story_title:
-        story_title = input('enter your story title: ')
+    STORY_TITLE = None
+    while not STORY_TITLE:
+        STORY_TITLE = input('enter your story title: ')
 
-    by = input('by: ')
+    BY = input('by: ')
     _and = ' and GPT-3'
-    by = by + _and if by else 'alex' + _and
+    BY = BY + _and if BY else 'alex' + _and
 
     passages = []
     start = 'Start'
@@ -253,7 +259,7 @@ def interactive():
         )
 
     print('Done!')
-    twee_file = make_twee_text_file(story_title, by, passages)
+    twee_file = make_twee_text_file(STORY_TITLE, BY, passages)
     run_twee_file(twee_file)
 
 

@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from transformers import AutoTokenizer, AutoModelForTokenClassification
 from transformers import pipeline
 from collections import defaultdict, Counter
@@ -51,11 +52,41 @@ MAX_EVENTS_LENGTH = 16
 DEFAULT_COMPONENT_FUNC = lambda x: str(x)
 
 
-class Reader:
+class NarrativeReader(ABC):
+    @abstractmethod
+    def write_context_text(self, full_context):
+        """
+        Turn a list of narrative elements into a string describing the context.
+        Our implementation of X from [TODO reference paper]
+
+        :param full_context: a list, each item (a dict) corresponding to all the narrative elements in that passage
+        :rtype: str
+        """
+        pass
+
+
+    def make_context_components(self, passage_text):
+        """
+        Produce a narrative reading from the passage text, ie a set of context components s
+        uch as entities and characters referenced in the passage text.
+        
+        Our implementation of R from [TODO reference paper]
+
+        :param passage_text: the text from a single passage
+        :return: a dict containing all narrative elements in the passage
+        """
+        pass
+
+ 
+
+class BasicVersionedReader(NarrativeReader):
     # AnyTree Docs: https://anytree.readthedocs.io/en/2.8.0/
     def __init__(self, v):
         self.set_extraction_version(v)
         self.author_functions = self._get_author_functions(self.extraction_version)
+
+    def __str__(self):
+        return f'<BasicVersionedReader v{self.extraction_version}>'
 
     def set_extraction_version(self, v):
         assert(1.1 <= v <= 1.3)
@@ -64,8 +95,10 @@ class Reader:
 
     def _get_author_functions(self, extraction_version):
         # map from context component to a function that writes text specific to that component type
+        if extraction_version == 1.1:
+            return {}
         return {
-            "entities": basic_entity_author if extraction_version <= 1.1 else all_entities_author,
+            "entities": basic_entity_author if extraction_version == 1.2 else all_entities_author,
             "pronouns": pronouns_author,
             "events": list_triples_author,  # predicates_author,
             "summary": lambda x: x,
@@ -97,17 +130,15 @@ class Reader:
         doc = nlp(passage_text)
 
         context_components = {
-            'v': self.extraction_version,  # Context version (I expect to go through a few iterations)
-            'pronouns': extract_pronouns(doc),
-            'entities': ner(passage_text),
+            'v': self.extraction_version,
         }
+
+        if self.extraction_version >= 1.2:
+            context_components['pronouns'] = extract_pronouns(doc)
+            context_components['entities'] = ner(passage_text)
 
         if self.extraction_version >= 1.3:
             context_components['events'] = extract_events(doc)
-
-        # TODO it this way
-        # for k, v in ner(passage_text).items():
-        #     context_components['entity_' + k] = v
 
         return context_components
 
@@ -116,18 +147,23 @@ class Reader:
         Take a list of dicts, each representing the narrative elements in one passage, and return a single dict containing
         all narrative elements across all passages.
         """
-        joined = {
-            'pronouns': [],
-            'entities': defaultdict(list),
-        }
+
+        joined = {}
+        if self.extraction_version >= 1.2:
+            joined = {
+                'pronouns': [],
+                'entities': defaultdict(list),
+            }
         if self.extraction_version >= 1.3:
             joined['events'] = []
 
         for passage_components in full_context:
-            joined['pronouns'] += passage_components['pronouns']
-            for k, v in passage_components['entities'].items():
-                joined['entities'][k] += v
-            if self.extraction_version >= 1.3:
+            if passage_components.get('pronouns'):
+                joined['pronouns'] += passage_components['pronouns']
+            if passage_components.get('entities'):
+                for k, v in passage_components['entities'].items():
+                    joined['entities'][k] += v
+            if passage_components.get('events'):
                 joined['events'] += passage_components['events']
 
         return joined
@@ -142,7 +178,7 @@ class Reader:
         :param full_context: a list, each item (a dict) corresponding to all the narrative elements in that passage
         :returns: a dict of mapping narrative element type -> their counts (for counted elements) or the elements in order (for non-counted elements)
         """
-        if not full_context:
+        if not full_context or self.extraction_version <= 1.1:
             return {}
 
         flattened = self.flatten_context(full_context)
@@ -391,7 +427,7 @@ This lead her to believe that the murderer(s) were still in London, and she woul
         Anna sits in her bed and knits. Someone knocks on the window to say hi. They lock eyes. You observe all of this."""
                 ][-1]
 
-    reader = Reader(1.3)
+    reader = BasicVersionedReader(1.3)
 
     passage = unsplit_lines(split_lines(passage)[1:])
     cleaned_passage_text = passage_to_text(passage)

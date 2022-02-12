@@ -2,7 +2,7 @@ from collections import defaultdict
 from anytree import RenderTree, NodeMixin, PreOrderIter
 from anytree.exporter import DotExporter
 from twee_utils import *
-from narrative_reader import Reader, predicates_author
+from narrative_reader import BasicVersionedReader, predicates_author
 
 
 class PassageTree(NodeMixin):
@@ -19,13 +19,13 @@ class PassageTree(NodeMixin):
         self.passage = passage
         self.cleaned_passage_text = passage_to_text('\n'.join(self.lines[1:])) if not raw_passage else passage_to_text('\n'.join(raw_passage.split('\n')[1:]))
         self.title = title if title else get_title(self.lines)
+        self.name = self.title
         self.parent = parent
         self._links = None
         self.narrative_elements = self._extract_narrative_elements()
         # the context is all relevant story details along the path from the root to the current node
         self.full_context = self.construct_context(parent) if (parent and compute_context) else []
-        self.context_text = PassageTree.reader.write_context_text(self.full_context)
-        self.name = self.title
+        self.context_text = PassageTree.get_reader().write_context_text(self.full_context)
 
     def __str__(self):
         return f'<PassageTree {self.name} v{self.reader.extraction_version}>'
@@ -75,11 +75,12 @@ class PassageTree(NodeMixin):
     @staticmethod
     def get_reader(version=1.3):
         """
-        Return the singleton reader class or initialize one to the given version if the reader does not exist.
+        Return the singleton reader class or initialize one to the provided version number 
+        if the reader does not exist.
         """
 
         if PassageTree.reader is None:
-            PassageTree.reader = Reader(version)
+            PassageTree.reader = BasicVersionedReader(version)
 
         return PassageTree.reader
 
@@ -162,7 +163,7 @@ if __name__ == '__main__':
     with open(game) as f:
         twee_str = f.read()
         print(f'tree for {game}:')
-        PassageTree.reader = Reader(1.3)
+        PassageTree.reader = BasicVersionedReader(1.3)
         tree, _ = PassageTree.create(twee=twee_str)
         tree.convert_events_to_fake_token()
         for n in PreOrderIter(tree):
