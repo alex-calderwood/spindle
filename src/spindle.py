@@ -1,4 +1,4 @@
-import os, re
+import os, re, logging
 from sys import argv
 import twee_utils as utils
 from display import make_selection, clear, italic, bold, italic_start, italic_end
@@ -136,6 +136,12 @@ def retrospective(raw_passage, passages, title, links_to_do, links_done, link_to
         )
         for link in links:
             link_to_parent[link] = node
+        
+        # Do some logging
+        logging.info(f"Title\t\t{node.title}")
+        logging.info(f"Passage\t\t{node.passage}")
+        logging.info(f"Narrative Elements\t{str(node.narrative_elements)}\n")
+        logging.info(f"Context\t\t{str(node.context_text)}" )
 
         node.render_root()
     else:
@@ -157,13 +163,18 @@ def make_twee_text_file(story_title, by, passages):
         twee_text += passage + "\n\n"
     twee_text = re.sub(r'::\s+start', ':: Start', twee_text)
 
-    file_base = story_title.replace(' ', '_')
-    filename = os.path.join(DATA_DIR, f'{file_base}.tw')
+    filename = make_file_base_name(story_title)
     with open(filename, 'w') as f:
         f.write(twee_text)
     print(f'Wrote twee to {filename}')
 
     return filename
+
+
+def make_file_base_name(story_title, extension='tw'):
+    file_base = story_title.replace(' ', '_')
+    file_base = os.path.join(DATA_DIR, f'{file_base}.{extension}')
+    return file_base
 
 
 def run_twee_file(filename):
@@ -203,14 +214,19 @@ def interactive():
     """
     Write a twine story interactively
     """
+
+    # Get the story title and author
     STORY_TITLE = None
     while not STORY_TITLE:
         STORY_TITLE = input('enter your story title: ')
-
     BY = input('by: ')
     _and = ' and GPT-3'
     BY = BY + _and if BY else 'alex' + _and
 
+    # Intialize a .log file
+    logging.basicConfig(filename=make_file_base_name(STORY_TITLE, 'log'), level=logging.INFO)
+
+    # Begin the interactive logic
     passages = []
     start = 'Start'
     links_to_do = [start]

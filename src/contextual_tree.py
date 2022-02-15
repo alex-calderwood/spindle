@@ -153,7 +153,7 @@ class BespokeToken:
         return f"~{self.text}"
 
     def __str__(self):
-        return self.text
+        return str(self.text)
 
 
 if __name__ == '__main__':
