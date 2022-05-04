@@ -1,6 +1,6 @@
-# Spindle - (work in progress)
+# Spindle
 
-Spindle is a mixed-initiative tool for writing interactive, branching fiction.
+Spindle is a mixed-initiative tool for writing interactive, branching fiction. Released under the [UC BSD-4-Clause](https://spdx.org/licenses/BSD-4-Clause-UC.html).
 
 
 ![Example](the_garden.png)
