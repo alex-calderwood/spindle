@@ -7,9 +7,6 @@ Spindle is a mixed-initiative tool for writing interactive, branching fiction. R
 
 This repo contains all resources needed to collect training data and fine-tune your own model for under $10.
 
-
-![Spindle](spindle.png)
-
 # Setup
 
 You must have Python 3.7 for this project. Optionally, I recommend using a virtual environment like [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html) for managing the environments as follows.
@@ -53,3 +50,5 @@ Navigate to [https://beta.openai.com/account/api-keys](https://beta.openai.com/a
 
     python src/spindle.py
 
+
+![Spindle](spindle.png)
