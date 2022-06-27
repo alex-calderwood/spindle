@@ -1,3 +1,4 @@
+import os
 from abc import ABC, abstractmethod
 from transformers import AutoTokenizer, AutoModelForTokenClassification
 from transformers import pipeline
@@ -46,7 +47,7 @@ TAG_TO_PLURAL_DESC = {
 ENTS_TO_ALWAYS_INCLUDE = ['LOC', 'PER']
 
 # Whether to force a BERT download
-REDOWNLOAD_BERT = False
+REDOWNLOAD_BERT = True
 DONE = False
 MAX_EVENTS_LENGTH = 16
 DEFAULT_COMPONENT_FUNC = lambda x: str(x)
@@ -226,8 +227,13 @@ def load_nlp_modules():
     t.start()
     os.environ["TOKENIZERS_PARALLELISM"] = "true"
     nlp = spacy.load('en_core_web_lg')
-    tokenizer = AutoTokenizer.from_pretrained("./dslim/bert-base-NER", force_download=REDOWNLOAD_BERT)
-    model = AutoModelForTokenClassification.from_pretrained("./dslim/bert-base-NER", force_download=REDOWNLOAD_BERT)
+    tokenizer = model = None
+    try:
+        tokenizer = AutoTokenizer.from_pretrained("./dslim/bert-base-NER", force_download=REDOWNLOAD_BERT)
+        model = AutoModelForTokenClassification.from_pretrained("./dslim/bert-base-NER", force_download=REDOWNLOAD_BERT)
+    except Exception as e:
+        print(f"Could not load {'tokenizer' if not tokenizer else 'model'}! Try setting REDOWNLOAD_BERT=True in src/narrative_reader.py")
+        os._exit(1)
     ner_pipeline = pipeline("ner", model=model, tokenizer=tokenizer)
     DONE = True
     t.join()
