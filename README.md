@@ -40,7 +40,7 @@ Navigate to [https://beta.openai.com/account/api-keys](https://beta.openai.com/a
 
 - Twine games from itch.io
 
-    python src/data_collection.py
+    python src/training/data_collection.py
 
 ## Create training data file
 
