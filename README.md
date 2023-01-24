@@ -2,7 +2,7 @@
 
 Spindle is a mixed-initiative tool for writing interactive, branching fiction. Released under the [UC BSD-4-Clause](https://spdx.org/licenses/BSD-4-Clause-UC.html).
 
-Warning! The system is just about ready for users to try it out, but it has been pointed out that it currently requires you fine-tune your own model as I am not able to share the fine-tune via OpenAI. Instructions are below, but it might be a little fiddly until someone gives it a shot.
+Warning! This codebase requires you fine-tune your own model as I am not able to share my fine-tuned model via OpenAI. Instructions are below, but it might be a little fiddly.
 
 ![Example](the_garden.png)
 
