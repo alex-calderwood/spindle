@@ -1,3 +1,5 @@
+Publication: [Calderwood, Alex, Noah Wardrip-Fruin, and Michael Mateas. "Spinning Coherent Interactive Fiction through Foundation Model Prompts."](https://computationalcreativity.net/iccc22/wp-content/uploads/2022/06/ICCC-2022_2L_Calderwood-et-al..pdf)
+
 # Spindle
 
 Spindle is a mixed-initiative tool for writing interactive, branching fiction. Released under the [UC BSD-4-Clause](https://spdx.org/licenses/BSD-4-Clause-UC.html).
